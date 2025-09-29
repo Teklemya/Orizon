@@ -1,0 +1,11 @@
+{
+  "name": "orizon",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo \"Use workspace scripts: api/web\""
+  }
+}

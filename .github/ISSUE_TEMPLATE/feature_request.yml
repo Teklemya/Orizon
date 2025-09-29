@@ -1,0 +1,18 @@
+
+name: Feature request
+description: Suggest an idea for Orizon
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: textarea
+    attributes:
+      label: Problem to solve
+  - type: textarea
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    attributes:
+      label: Additional context

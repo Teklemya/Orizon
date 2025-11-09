@@ -1,0 +1,72 @@
+[
+  {
+    "id": "ohio_state",
+    "name": "The Ohio State University",
+    "level": ["Undergrad","Graduate"],
+    "english_tests": ["TOEFL","IELTS","DET"],
+    "min_scores": { "Undergrad": { "TOEFL": 79, "IELTS": 6.5, "DET": 115 }, "Graduate": { "TOEFL": 80, "IELTS": 7.0 } },
+    "deadlines": { "fall": "2025-11-01", "spring": "2025-08-01", "rolling": false },
+    "docs": ["transcript","recommendations","personal_statement","financial_proof"],
+    "links": {
+      "admissions": "https://www.osu.edu/admissions/",
+      "international": "https://oia.osu.edu/",
+      "english_policy": "https://undergrad.osu.edu/international-freshmen/english-proficiency"
+    }
+  },
+  {
+    "id": "purdue",
+    "name": "Purdue University",
+    "level": ["Undergrad","Graduate"],
+    "english_tests": ["TOEFL","IELTS","DET"],
+    "min_scores": { "Undergrad": { "TOEFL": 80, "IELTS": 6.5, "DET": 115 }, "Graduate": { "TOEFL": 80, "IELTS": 6.5 } },
+    "deadlines": { "fall": "2025-12-01", "spring": "2025-09-15", "rolling": false },
+    "docs": ["transcript","recommendations","personal_statement","bank_statement"],
+    "links": {
+      "admissions": "https://www.purdue.edu/admissions/",
+      "international": "https://www.purdue.edu/intlstudents/",
+      "english_policy": "https://www.purdue.edu/gradschool/admissions/how-to-apply/apply-toefl.html"
+    }
+  },
+  {
+    "id": "ucincinnati",
+    "name": "University of Cincinnati",
+    "level": ["Undergrad","Graduate"],
+    "english_tests": ["TOEFL","IELTS","DET"],
+    "min_scores": { "Undergrad": { "TOEFL": 66, "IELTS": 6.0, "DET": 105 }, "Graduate": { "TOEFL": 80, "IELTS": 6.5 } },
+    "deadlines": { "fall": "2025-12-01", "spring": "2025-10-01", "rolling": true },
+    "docs": ["transcript","recommendations","essay","financial_proof"],
+    "links": {
+      "admissions": "https://www.uc.edu/admissions.html",
+      "international": "https://www.uc.edu/international.html",
+      "english_policy": "https://www.uc.edu/international/english.html"
+    }
+  },
+  {
+    "id": "asu",
+    "name": "Arizona State University",
+    "level": ["Undergrad","Graduate"],
+    "english_tests": ["TOEFL","IELTS","DET"],
+    "min_scores": { "Undergrad": { "TOEFL": 61, "IELTS": 6.0, "DET": 95 }, "Graduate": { "TOEFL": 80, "IELTS": 6.5 } },
+    "deadlines": { "fall": "2025-11-01", "spring": "2025-09-01", "rolling": true },
+    "docs": ["transcript","personal_statement","financial_proof"],
+    "links": {
+      "admissions": "https://admission.asu.edu/international",
+      "international": "https://global.asu.edu/",
+      "english_policy": "https://admission.asu.edu/international/englishproficiency"
+    }
+  },
+  {
+    "id": "umn",
+    "name": "University of Minnesota",
+    "level": ["Undergrad","Graduate"],
+    "english_tests": ["TOEFL","IELTS","DET"],
+    "min_scores": { "Undergrad": { "TOEFL": 79, "IELTS": 6.5, "DET": 115 }, "Graduate": { "TOEFL": 79, "IELTS": 6.5 } },
+    "deadlines": { "fall": "2025-11-01", "spring": "2025-08-15", "rolling": false },
+    "docs": ["transcript","recommendations","personal_statement","financial_proof"],
+    "links": {
+      "admissions": "https://admissions.tc.umn.edu/",
+      "international": "https://global.umn.edu/icc/",
+      "english_policy": "https://grad.umn.edu/admissions/international-student-resources/english-language-proficiency"
+    }
+  }
+]

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Level = "Undergrad" | "Graduate";
+
 type Step = {
   id: number;
   title: string;
@@ -11,40 +12,89 @@ type Step = {
   description?: string;
 };
 
+type School = {
+  id: string;
+  name: string;
+};
+
 export default function RoadmapBuilder({
   onGenerated,
 }: {
   onGenerated: (steps: Step[], sources: { title: string; url: string }[]) => void;
 }) {
-  const [country, setCountry] = useState("Peru");
+  const [country, setCountry] = useState("Peru"); // home / citizenship country
   const [level, setLevel] = useState<Level>("Undergrad");
   const [intakeMonth, setIntakeMonth] = useState("August");
   const [targetYear, setTargetYear] = useState(new Date().getFullYear() + 1);
-  const [targets, setTargets] = useState("purdue,ucincinnati");
+
+  // NEW: intended major (optional)
+  const [intendedMajor, setIntendedMajor] = useState("");
+
+  // schools + selected university
+  const [schools, setSchools] = useState<School[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
+  const [loadingSchools, setLoadingSchools] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // ---- load schools from backend once ----
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoadingSchools(true);
+        setErr(null);
+        const res = await fetch("/ai/schools");
+        if (!res.ok) throw new Error(`Failed to load universities`);
+        const data = await res.json();
+        const simple: School[] = data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+        }));
+        setSchools(simple);
+        if (simple.length > 0) {
+          setSelectedSchoolId(simple[0].id); // default to first school
+        }
+      } catch (e: any) {
+        console.error(e);
+        setErr(e?.message ?? "Error loading universities");
+      } finally {
+        setLoadingSchools(false);
+      }
+    }
+    load();
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); // <-- important: avoid full page reload
+    e.preventDefault();
     setLoading(true);
     setErr(null);
     try {
-      const targetUniversities = targets
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      if (!selectedSchoolId) {
+        throw new Error("Please choose a university.");
+      }
+
+      const targetUniversities = [selectedSchoolId];
+
+      // Build payload and only include intendedMajor if provided
+      const payload: any = {
+        profileId: "demo",
+        country,           // home country
+        destinationCountry: "United States", // purely informational if you want
+        level,
+        intakeMonth,
+        targetYear,
+        targetUniversities,
+      };
+
+      if (intendedMajor.trim()) {
+        payload.intendedMajor = intendedMajor.trim();
+      }
 
       const res = await fetch("/ai/roadmap/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profileId: "demo",
-          country,
-          level,
-          intakeMonth,
-          targetYear,
-          targetUniversities,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -68,7 +118,7 @@ export default function RoadmapBuilder({
 
       <form onSubmit={handleSubmit} className="grid sm:grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-sm text-gray-600">Country</span>
+          <span className="text-sm text-gray-600">Home country</span>
           <input
             className="mt-1 w-full rounded-lg border px-3 py-2"
             value={country}
@@ -111,15 +161,43 @@ export default function RoadmapBuilder({
           />
         </label>
 
+        {/* NEW: intended major (optional) */}
         <label className="sm:col-span-2 block">
-          <span className="text-sm text-gray-600">Universities (IDs, comma-separated)</span>
+          <span className="text-sm text-gray-600">
+            Intended major{" "}
+            <span className="text-xs text-gray-400">(optional)</span>
+          </span>
           <input
             className="mt-1 w-full rounded-lg border px-3 py-2"
-            placeholder="purdue,ucincinnati"
-            value={targets}
-            onChange={(e) => setTargets(e.target.value)}
+            placeholder="e.g. Computer Science, Business, Mechanical Engineering"
+            value={intendedMajor}
+            onChange={(e) => setIntendedMajor(e.target.value)}
           />
-          <span className="text-xs text-gray-500">IDs must match your KB (schools.json).</span>
+        </label>
+
+        {/* University dropdown */}
+        <label className="sm:col-span-2 block">
+          <span className="text-sm text-gray-600">University (USA)</span>
+          {loadingSchools ? (
+            <p className="mt-1 text-sm text-gray-500">
+              Loading universities…
+            </p>
+          ) : (
+            <select
+              className="mt-1 w-full rounded-lg border px-3 py-2"
+              value={selectedSchoolId}
+              onChange={(e) => setSelectedSchoolId(e.target.value)}
+            >
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <span className="text-xs text-gray-500">
+            Options are loaded from the Orizon schools knowledge base.
+          </span>
         </label>
 
         {err && (
@@ -131,7 +209,7 @@ export default function RoadmapBuilder({
         <div className="sm:col-span-2">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || loadingSchools}
             className="inline-flex items-center rounded-xl px-4 py-2 bg-black text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {loading ? "Generating…" : "Generate Roadmap"}

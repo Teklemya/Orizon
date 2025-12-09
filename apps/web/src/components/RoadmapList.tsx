@@ -1,79 +1,107 @@
-import { useEffect, useState } from "react";
 import type { Step } from "../lib/api";
 
-export default function RoadmapList({ steps }: { steps: Step[] }) {
-  // Keep a local copy so checkboxes can toggle without regenerating
-  const [local, setLocal] = useState<Step[]>(steps);
-  useEffect(() => setLocal(steps), [steps]);
+type Props = {
+  steps: Step[];
+  saveLabel?: string;
+  onChangeSaveLabel?: (value: string) => void;
+  onSaveCurrent?: () => void;
+};
 
-  function toggle(id: number) {
-    setLocal((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, status: s.status === "done" ? "pending" : "done" } : s
-      )
-    );
+export default function RoadmapList({
+  steps,
+  saveLabel = "",
+  onChangeSaveLabel,
+  onSaveCurrent,
+}: Props) {
+  const hasSteps = steps.length > 0;
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (onSaveCurrent) onSaveCurrent();
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow p-6">
-      <h3 className="text-lg font-semibold mb-4">My Roadmap</h3>
+    <section className="bg-white rounded-2xl shadow p-6">
+      {/* Header row with save controls on the right */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-semibold">Generated Roadmap</h2>
+          <p className="text-sm text-gray-600">
+            {hasSteps
+              ? "Checklist of your current application steps."
+              : "Generate a roadmap to see tasks here."}
+          </p>
+        </div>
 
-      {local.length === 0 ? (
-        <p className="italic text-gray-500">
-          No roadmap yet — use <span className="not-italic font-medium">AI Roadmap Generator</span> to
-          create your plan.
+        {hasSteps && onSaveCurrent && (
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col sm:flex-row gap-2 sm:items-center"
+          >
+            <input
+              className="w-full sm:w-64 rounded-lg border px-3 py-1.5 text-sm"
+              placeholder="Label this roadmap (e.g. UC CS 2026)"
+              value={saveLabel}
+              onChange={(e) =>
+                onChangeSaveLabel && onChangeSaveLabel(e.target.value)
+              }
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-xl px-3 py-1.5 bg-black text-white text-xs sm:text-sm hover:bg-gray-800"
+            >
+              Save roadmap
+            </button>
+          </form>
+        )}
+      </div>
+
+      {!hasSteps && (
+        <p className="text-sm text-gray-500">
+          Once you generate a roadmap, your steps will appear here as a
+          checklist.
         </p>
-      ) : (
-        <ul className="space-y-3">
-          {local.map((step) => (
-            <li key={step.id} className="rounded-xl border p-4">
+      )}
+
+      {hasSteps && (
+        <div className="space-y-3">
+          {steps.map((step) => (
+            <article
+              key={step.id}
+              className="border rounded-2xl px-4 py-3 hover:border-gray-300"
+            >
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
-                  aria-label={`Mark "${step.title}" as ${
-                    step.status === "done" ? "pending" : "done"
-                  }`}
-                  checked={step.status === "done"}
-                  onChange={() => toggle(step.id)}
-                  className="mt-1 size-5 rounded-md"
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                  // purely visual for the demo (not persisted)
                 />
-
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{step.title}</span>
-
+                    <h3 className="font-medium text-sm sm:text-base">
+                      {step.title}
+                    </h3>
                     {step.dueDate && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         due {new Date(step.dueDate).toLocaleDateString()}
                       </span>
                     )}
-
-                    <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5">
+                    <span className="ml-auto text-xs rounded-full px-2 py-0.5 bg-gray-100 text-gray-600">
                       {step.stage}
                     </span>
                   </div>
 
                   {step.description && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm text-blue-600">
-                        How to complete
-                      </summary>
-                      <p className="mt-2 text-sm text-gray-700">{step.description}</p>
-                    </details>
+                    <p className="mt-1 text-xs text-gray-600 whitespace-pre-line">
+                      {step.description}
+                    </p>
                   )}
                 </div>
               </div>
-
-              {/* Optional: show dependencies */}
-              {step.deps && step.deps.length > 0 && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Depends on: {step.deps.join(", ")}
-                </p>
-              )}
-            </li>
+            </article>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

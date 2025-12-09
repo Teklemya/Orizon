@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "../lib/auth";
 
 // tiny helper
 function cx(...cls: Array<string | false | null | undefined>) {
@@ -9,6 +10,17 @@ function cx(...cls: Array<string | false | null | undefined>) {
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user, logout } = useAuth();
+
+  // Breadcrumb text
+  const breadcrumb =
+    pathname === "/dashboard"
+      ? "Roadmap · Opportunities"
+      : pathname === "/essay-studio"
+      ? "Essay feedback"
+      : pathname === "/community"
+      ? "Student questions"
+      : "Welcome";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -20,7 +32,9 @@ export default function Layout() {
             <div className="flex items-center gap-3">
               <Logo />
               <span className="font-semibold tracking-tight">Orizon</span>
-              <span className="hidden md:inline text-xs px-2 py-0.5 rounded-full bg-black text-white/90">MVP</span>
+              <span className="hidden md:inline text-xs px-2 py-0.5 rounded-full bg-black text-white/90">
+                MVP
+              </span>
             </div>
 
             {/* Desktop Nav */}
@@ -30,9 +44,7 @@ export default function Layout() {
                 className={({ isActive }) =>
                   cx(
                     "px-3 py-2 rounded-xl text-sm font-medium transition",
-                    isActive
-                      ? "bg-black text-white"
-                      : "text-gray-700 hover:bg-gray-100"
+                    isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100"
                   )
                 }
               >
@@ -40,34 +52,56 @@ export default function Layout() {
               </NavLink>
 
               <NavLink
-                to="/login"
+                to="/essay-studio"
                 className={({ isActive }) =>
                   cx(
                     "px-3 py-2 rounded-xl text-sm font-medium transition",
-                    isActive
-                      ? "bg-black text-white"
-                      : "text-gray-700 hover:bg-gray-100"
+                    isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100"
                   )
                 }
               >
-                Login
+                Essay Studio
               </NavLink>
 
-              {/* Optional: external docs link placeholder */}
-              <a
-                href="#"
-                className="px-3 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
+              <NavLink
+                to="/community"
+                className={({ isActive }) =>
+                  cx(
+                    "px-3 py-2 rounded-xl text-sm font-medium transition",
+                    isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100"
+                  )
+                }
               >
-                Docs
-              </a>
+                Community Q&A
+              </NavLink>
             </nav>
 
             {/* Right Actions */}
-            <div className="hidden md:flex items-center gap-2">
-              {/* Contextual breadcrumb-ish text */}
-              <span className="text-xs text-gray-500">
-                {pathname === "/dashboard" ? "Roadmap · Opportunities" : "Welcome"}
-              </span>
+            <div className="hidden md:flex items-center gap-3">
+              <span className="text-xs text-gray-500">{breadcrumb}</span>
+
+              {!user ? (
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) =>
+                    cx(
+                      "px-3 py-2 rounded-xl text-sm font-medium border transition",
+                      isActive
+                        ? "bg-black text-white border-black"
+                        : "text-gray-700 border-gray-200 hover:bg-gray-100"
+                    )
+                  }
+                >
+                  Login
+                </NavLink>
+              ) : (
+                <button
+                  onClick={logout}
+                  className="px-3 py-2 rounded-xl text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                  Logout
+                </button>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -77,7 +111,12 @@ export default function Layout() {
               aria-label="Toggle menu"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
           </div>
@@ -86,11 +125,31 @@ export default function Layout() {
           {open && (
             <div className="md:hidden pb-3">
               <div className="grid gap-1">
-                <MobileLink to="/dashboard" onClick={() => setOpen(false)}>Dashboard</MobileLink>
-                <MobileLink to="/login" onClick={() => setOpen(false)}>Login</MobileLink>
-                <a href="#" className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-                  Docs
-                </a>
+                <MobileLink to="/dashboard" onClick={() => setOpen(false)}>
+                  Dashboard
+                </MobileLink>
+                <MobileLink to="/essay-studio" onClick={() => setOpen(false)}>
+                  Essay Studio
+                </MobileLink>
+                <MobileLink to="/community" onClick={() => setOpen(false)}>
+                  Community Q&A
+                </MobileLink>
+
+                {!user ? (
+                  <MobileLink to="/login" onClick={() => setOpen(false)}>
+                    Login
+                  </MobileLink>
+                ) : (
+                  <button
+                    onClick={() => {
+                      logout();
+                      setOpen(false);
+                    }}
+                    className="text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                  >
+                    Logout
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -107,8 +166,12 @@ export default function Layout() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 flex items-center justify-between text-sm text-gray-500">
           <span>© {new Date().getFullYear()} Orizon</span>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:underline">Privacy</a>
-            <a href="#" className="hover:underline">Terms</a>
+            <a href="#" className="hover:underline">
+              Privacy
+            </a>
+            <a href="#" className="hover:underline">
+              Terms
+            </a>
           </div>
         </div>
       </footer>
@@ -116,7 +179,15 @@ export default function Layout() {
   );
 }
 
-function MobileLink({ to, children, onClick }: { to: string; children: React.ReactNode; onClick?: () => void }) {
+function MobileLink({
+  to,
+  children,
+  onClick,
+}: {
+  to: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
     <NavLink
       to={to}
@@ -135,9 +206,13 @@ function MobileLink({ to, children, onClick }: { to: string; children: React.Rea
 
 function Logo() {
   return (
-    <svg className="h-5 w-5 text-black" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      {/* Simple compass/arrow logo */}
-      <path d="M12 2a1 1 0 0 1 .9.55l2.2 4.4 4.9.7a1 1 0 0 1 .55 1.7l-3.55 3.46.84 4.88a1 1 0 0 1-1.45 1.05L12 17.77l-4.39 2.32a1 1 0 0 1-1.45-1.05l.84-4.88L3.45 9.35A1 1 0 0 1 4 7.65l4.9-.7 2.2-4.4A1 1 0 0 1 12 2z"/>
+    <svg
+      className="h-5 w-5 text-black"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2a1 1 0 0 1 .9.55l2.2 4.4 4.9.7a1 1 0 0 1 .55 1.7l-3.55 3.46.84 4.88a1 1 0 0 1-1.45 1.05L12 17.77l-4.39 2.32a1 1 0 0 1-1.45-1.05l.84-4.88L3.45 9.35A1 1 0 0 1 4 7.65l4.9-.7 2.2-4.4A1 1 0 0 1 12 2z" />
     </svg>
   );
 }

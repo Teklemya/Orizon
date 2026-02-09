@@ -38,3 +38,4 @@ app.get("/health", (_req,res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`AI generator on http://localhost:${PORT}`));
+

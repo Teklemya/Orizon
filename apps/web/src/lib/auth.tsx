@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(STORAGE_KEY);
       }
     } catch {
-      // ignore storage errors in demo
+      // demo-only: ignore storage errors
     }
   }, [user]);
 
@@ -53,7 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  const value: AuthContextValue = { user, login, logout };
+  const value: AuthContextValue = {
+    user,
+    login,
+    logout,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

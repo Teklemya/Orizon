@@ -85,33 +85,100 @@ export default function Dashboard() {
             setSources(srcs);
           }}
         />
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl shadow p-6">
+                <h3 className="text-lg font-semibold">Opportunities</h3>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl shadow p-6">
-            <h3 className="text-lg font-semibold">Opportunities</h3>
-            <p className="text-sm text-gray-600">No data yet.</p>
-          </div>
+                {/* Sample opportunities shown on dashboard (front-end demo only) */}
+                {(() => {
+                  const sample = [
+                    {
+                      id: 1,
+                      title: "Undergraduate Research Assistant",
+                      type: "Research",
+                      location: "On-campus",
+                      paid: true,
+                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
+                      link: "https://example.edu/research",
+                    },
+                    {
+                      id: 2,
+                      title: "Summer Internship — Software Engineering",
+                      type: "Internship",
+                      location: "Remote",
+                      paid: true,
+                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
+                      link: "https://example.com/internship",
+                    },
+                    {
+                      id: 3,
+                      title: "Scholarship: Global Scholars Award",
+                      type: "Scholarship",
+                      location: "Worldwide",
+                      paid: false,
+                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45).toISOString(),
+                      link: "https://example.org/scholarship",
+                    },
+                  ];
 
-          {sources.length > 0 && (
-            <div className="bg-white rounded-2xl shadow p-6">
-              <h3 className="text-lg font-semibold mb-2">Sources</h3>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {sources.map((s) => (
-                  <li key={s.url}>
-                    <a
-                      className="text-blue-600 hover:underline"
-                      href={s.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {s.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+                  return (
+                    <div className="space-y-3 mt-3">
+                      {sample.slice(0, 3).map((o) => (
+                        <div key={o.id} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <a
+                                href={o.link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm font-medium text-gray-800 hover:underline"
+                              >
+                                {o.title}
+                              </a>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
+                              </div>
+                            </div>
+                            <div className="text-[11px] text-gray-400">
+                              due {new Date(o.deadline).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="mt-2 text-right">
+                        <a
+                          href="/opportunities"
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          View all opportunities →
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {sources.length > 0 && (
+                <div className="bg-white rounded-2xl shadow p-6">
+                  <h3 className="text-lg font-semibold mb-2">Sources</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    {sources.map((s) => (
+                      <li key={s.url}>
+                        <a
+                          className="text-blue-600 hover:underline"
+                          href={s.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {s.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-          )}
-        </div>
       </div>
 
       {/* Generated Roadmap (current) with inline "Save roadmap" */}

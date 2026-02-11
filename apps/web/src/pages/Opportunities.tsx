@@ -12,25 +12,7 @@ type Opportunity = {
   postedAt: string; // ISO
 };
 
-const STORAGE_KEY = "orizon_opportunities";
-
-function loadFromStorage(): Opportunity[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Opportunity[];
-  } catch {
-    return [];
-  }
-}
-
-function saveToStorage(list: Opportunity[]) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {
-    // ignore for demo
-  }
-}
+const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:4000";
 
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -54,57 +36,44 @@ export default function OpportunitiesPage() {
     link: "",
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const stored = loadFromStorage();
-    if (stored.length) {
-      setItems(stored);
-      return;
-    }
+    let mounted = true;
+    setLoading(true);
+    fetch(`${API_BASE}/api/opportunities`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+      })
+      .then((data: any[]) => {
+        if (!mounted) return;
+        const norm: Opportunity[] = data.map((d) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          type: d.type,
+          location: d.location,
+          paid: !!d.paid,
+          deadline: d.deadline || undefined,
+          link: d.link || undefined,
+          postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+        }));
+        setItems(norm);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load opportunities:", err);
+        if (!mounted) return;
+        setError("Failed to load opportunities");
+        setLoading(false);
+      });
 
-    // Seed samples if empty
-    const seed: Opportunity[] = [
-      {
-        id: Date.now() - 300000,
-        title: "Undergraduate Research Assistant",
-        description: "Assist faculty with experiments in the biology lab.",
-        type: "Research",
-        location: "On-campus",
-        paid: true,
-        deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
-        link: "https://example.edu/research",
-        postedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      },
-      {
-        id: Date.now() - 200000,
-        title: "Summer Internship — Software Engineering",
-        description: "Remote internship for students working on full-stack web apps.",
-        type: "Internship",
-        location: "Remote",
-        paid: true,
-        deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
-        link: "https://example.com/internship",
-        postedAt: new Date().toISOString(),
-      },
-      {
-        id: Date.now() - 100000,
-        title: "Global Scholars Award",
-        description: "Merit-based scholarship for international students.",
-        type: "Scholarship",
-        location: "Worldwide",
-        paid: false,
-        deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45).toISOString(),
-        link: "https://example.org/scholarship",
-        postedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      },
-    ];
-
-    setItems(seed);
-    saveToStorage(seed);
+    return () => {
+      mounted = false;
+    };
   }, []);
-
-  useEffect(() => {
-    saveToStorage(items);
-  }, [items]);
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -133,24 +102,57 @@ export default function OpportunitiesPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title || !form.type) return;
-    const next: Opportunity = {
-      id: Date.now(),
+    const payload = {
       title: form.title!.trim(),
-      description: form.description?.trim() || "",
-      type: (form.type as Opportunity["type"]) || "Internship",
-      location: form.location || "Remote",
+      description: form.description?.trim() || undefined,
+      type: form.type || undefined,
+      location: form.location || undefined,
       paid: !!form.paid,
       deadline: form.deadline || undefined,
       link: form.link || undefined,
-      postedAt: new Date().toISOString(),
     };
-    setItems((s) => [next, ...s]);
-    setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
-    setShowForm(false);
+
+    fetch(`${API_BASE}/api/opportunities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+      })
+      .then((d) => {
+        const created: Opportunity = {
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          type: d.type,
+          location: d.location,
+          paid: !!d.paid,
+          deadline: d.deadline || undefined,
+          link: d.link || undefined,
+          postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+        };
+        setItems((s) => [created, ...s]);
+        setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
+        setShowForm(false);
+      })
+      .catch((err) => {
+        console.error("Failed to create opportunity:", err);
+        setError("Failed to create opportunity");
+      });
   }
 
   function removeItem(id: number) {
-    setItems((s) => s.filter((x) => x.id !== id));
+    fetch(`${API_BASE}/api/opportunities/${id}`, { method: "DELETE" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        setItems((s) => s.filter((x) => x.id !== id));
+      })
+      .catch((err) => {
+        console.error("Failed to delete opportunity:", err);
+        setError("Failed to delete opportunity");
+      });
   }
 
   return (
@@ -213,7 +215,9 @@ export default function OpportunitiesPage() {
           )}
 
           <div className="space-y-3">
-            {filtered.length === 0 && <div className="text-sm text-gray-500">No opportunities found.</div>}
+            {loading && <div className="text-sm text-gray-500">Loading…</div>}
+            {error && <div className="text-sm text-red-500">{error}</div>}
+            {!loading && filtered.length === 0 && <div className="text-sm text-gray-500">No opportunities found.</div>}
 
             {filtered.map((it) => (
               <div key={it.id} className="bg-white rounded-xl p-4 border">

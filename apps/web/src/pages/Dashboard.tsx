@@ -20,6 +20,10 @@ export default function Dashboard() {
   const [saveLabel, setSaveLabel] = useState("");
   const [openSavedId, setOpenSavedId] = useState<number | null>(null);
 
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [oppLoading, setOppLoading] = useState(true);
+  const [oppError, setOppError] = useState<string | null>(null);
+
   // Load saved roadmaps from localStorage (front-end only)
   useEffect(() => {
     try {
@@ -32,6 +36,25 @@ export default function Dashboard() {
     } catch {
       // ignore parse errors for demo
     }
+  }, []);
+
+  // Fetch opportunities from API
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:4000";
+    fetch(`${apiBase}/api/opportunities`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+      })
+      .then((data: any[]) => {
+        setOpportunities(data);
+        setOppLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load opportunities:", err);
+        setOppError("Failed to load opportunities");
+        setOppLoading(false);
+      });
   }, []);
 
   function persistSaved(next: SavedRoadmap[]) {
@@ -89,74 +112,45 @@ export default function Dashboard() {
               <div className="bg-white rounded-2xl shadow p-6">
                 <h3 className="text-lg font-semibold">Opportunities</h3>
 
-                {/* Sample opportunities shown on dashboard (front-end demo only) */}
-                {(() => {
-                  const sample = [
-                    {
-                      id: 1,
-                      title: "Undergraduate Research Assistant",
-                      type: "Research",
-                      location: "On-campus",
-                      paid: true,
-                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
-                      link: "https://example.edu/research",
-                    },
-                    {
-                      id: 2,
-                      title: "Summer Internship — Software Engineering",
-                      type: "Internship",
-                      location: "Remote",
-                      paid: true,
-                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
-                      link: "https://example.com/internship",
-                    },
-                    {
-                      id: 3,
-                      title: "Scholarship: Global Scholars Award",
-                      type: "Scholarship",
-                      location: "Worldwide",
-                      paid: false,
-                      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45).toISOString(),
-                      link: "https://example.org/scholarship",
-                    },
-                  ];
+                <div className="space-y-3 mt-3">
+                  {oppLoading && <div className="text-sm text-gray-500">Loading…</div>}
+                  {oppError && <div className="text-sm text-red-500">{oppError}</div>}
+                  {!oppLoading && opportunities.length === 0 && <div className="text-sm text-gray-500">No opportunities yet.</div>}
 
-                  return (
-                    <div className="space-y-3 mt-3">
-                      {sample.slice(0, 3).map((o) => (
-                        <div key={o.id} className="border rounded-lg p-3 bg-gray-50">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <a
-                                href={o.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-sm font-medium text-gray-800 hover:underline"
-                              >
-                                {o.title}
-                              </a>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
-                              </div>
-                            </div>
-                            <div className="text-[11px] text-gray-400">
-                              due {new Date(o.deadline).toLocaleDateString()}
-                            </div>
+                  {opportunities.slice(0, 3).map((o) => (
+                    <div key={o.id} className="border rounded-lg p-3 bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <a
+                            href={o.link || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-medium text-gray-800 hover:underline"
+                          >
+                            {o.title}
+                          </a>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
                           </div>
                         </div>
-                      ))}
-
-                      <div className="mt-2 text-right">
-                        <a
-                          href="/opportunities"
-                          className="text-sm text-blue-600 hover:underline"
-                        >
-                          View all opportunities →
-                        </a>
+                        {o.deadline && (
+                          <div className="text-[11px] text-gray-400">
+                            due {new Date(o.deadline).toLocaleDateString()}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })()}
+                  ))}
+
+                  <div className="mt-2 text-right">
+                    <a
+                      href="/opportunities"
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      View all opportunities →
+                    </a>
+                  </div>
+                </div>
               </div>
 
               {sources.length > 0 && (

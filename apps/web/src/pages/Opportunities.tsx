@@ -288,7 +288,7 @@ export default function OpportunitiesPage() {
 
           <div className="bg-white p-4 rounded-lg border text-sm text-gray-600">
             <strong>How it works</strong>
-            <p className="mt-2 text-xs">Post opportunities for other students. Items are stored locally in your browser for demo purposes.</p>
+            <p className="mt-2 text-xs">Post opportunities for other students. Items are stored in the database and shared across users.</p>
           </div>
         </aside>
       </div>

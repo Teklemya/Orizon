@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
   paid BOOLEAN DEFAULT false,
   deadline TIMESTAMPTZ,
   link TEXT,
+  created_by TEXT,
   posted_at TIMESTAMPTZ DEFAULT now()
 );
 

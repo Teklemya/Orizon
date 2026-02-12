@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../lib/apiBase";
 
 type Opportunity = {
   id: number;
@@ -11,8 +12,6 @@ type Opportunity = {
   link?: string;
   postedAt: string; // ISO
 };
-
-const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:4000";
 
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import RoadmapBuilder from "../components/RoadmapBuilder";
 import RoadmapList from "../components/RoadmapList";
 import type { Step } from "../lib/api";
+import { API_BASE } from "../lib/apiBase";
 
 type SavedRoadmap = {
   id: number;
@@ -40,8 +41,7 @@ export default function Dashboard() {
 
   // Fetch opportunities from API
   useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_BASE as string) || "http://localhost:4000";
-    fetch(`${apiBase}/api/opportunities`)
+    fetch(`${API_BASE}/api/opportunities`)
       .then((res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();

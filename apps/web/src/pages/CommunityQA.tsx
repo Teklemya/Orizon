@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/auth";
+import { API_BASE } from "../lib/apiBase";
 
 type Answer = {
   id: number;
@@ -35,7 +36,7 @@ export default function CommunityQA() {
   const { user } = useAuth();
   const currentAuthor = user ? "Demo student · Orizon" : "Demo student";
 
-  const API_URL = "http://localhost:4000/api/questions";
+  const API_URL = `${API_BASE}/api/questions`;
 
   // ✅ Dummy + common categories (your system vocabulary)
   const BASE_CATEGORIES = [

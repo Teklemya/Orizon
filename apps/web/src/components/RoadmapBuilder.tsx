@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../lib/apiBase";
 
 type Level = "Undergrad" | "Graduate";
 
@@ -44,7 +45,7 @@ export default function RoadmapBuilder({
       try {
         setLoadingSchools(true);
         setErr(null);
-        const res = await fetch("/ai/schools");
+        const res = await fetch(`${API_BASE}/ai/schools`);
         if (!res.ok) throw new Error(`Failed to load universities`);
         const data = await res.json();
         const simple: School[] = data.map((s: any) => ({
@@ -91,7 +92,7 @@ export default function RoadmapBuilder({
         payload.intendedMajor = intendedMajor.trim();
       }
 
-      const res = await fetch("/ai/roadmap/generate", {
+      const res = await fetch(`${API_BASE}/ai/roadmap/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -1,3 +1,5 @@
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 export type Level = "Undergrad" | "Graduate";
 
 export type Step = {
@@ -18,7 +20,7 @@ export async function generateRoadmap(input: {
   targetYear: number;
   targetUniversities?: string[];
 }): Promise<{ steps: Step[]; sources: { title: string; url: string }[] }> {
-  const res = await fetch("/ai/roadmap/generate", {
+  const res = await fetch(`${API_BASE}/ai/roadmap/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

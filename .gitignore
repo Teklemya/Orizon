@@ -30,5 +30,3 @@ logs
 # Others
 .tmp/
 .envrc
-
-.cursor

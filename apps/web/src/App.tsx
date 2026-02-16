@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Layout from "./layout/Layout";
 
 import Dashboard from "./pages/Dashboard";
+import Opportunities from "./pages/Opportunities";
 import EssayStudio from "./pages/EssayStudio";
 import CommunityQA from "./pages/CommunityQA";
 import Login from "./pages/Login";
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/explore" element={<Dashboard />} />
 
         <Route path="/essay-studio" element={<EssayStudio />} />
+        <Route path="/opportunities" element={<Opportunities />} />
         <Route path="/community" element={<CommunityQA />} />
         <Route path="/login" element={<Login />} />
 

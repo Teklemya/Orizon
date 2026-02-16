@@ -12,6 +12,8 @@ import { getEssayFeedback } from "./essay/feedback";
 
 // 👇 NEW: Community Q&A route
 import questionsRouter from "./questions";
+// Opportunities route
+import opportunitiesRouter from "./opportunities";
 
 const app = express();
 app.use(cors());
@@ -80,6 +82,9 @@ app.get("/ai/schools", listSchoolsHandler);
 
 // ====== COMMUNITY Q&A ROUTE (NEW) ======
 app.use("/api/questions", questionsRouter);
+
+// ====== OPPORTUNITIES ROUTE ======
+app.use("/api/opportunities", opportunitiesRouter);
 
 // ====== HEALTH CHECK + ROOT ======
 app.get("/", (_req, res) => res.send("Orizon AI API is running"));

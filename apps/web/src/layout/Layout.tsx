@@ -20,6 +20,8 @@ export default function Layout() {
       ? "Essay feedback"
       : pathname === "/community"
       ? "Student questions"
+      : pathname === "/opportunities"
+      ? "Opportunities"
       : "Welcome";
 
   return (
@@ -73,6 +75,18 @@ export default function Layout() {
                 }
               >
                 Community Q&A
+              </NavLink>
+
+              <NavLink
+                to="/opportunities"
+                className={({ isActive }) =>
+                  cx(
+                    "px-3 py-2 rounded-xl text-sm font-medium transition",
+                    isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100"
+                  )
+                }
+              >
+                Opportunities
               </NavLink>
             </nav>
 
@@ -133,6 +147,9 @@ export default function Layout() {
                 </MobileLink>
                 <MobileLink to="/community" onClick={() => setOpen(false)}>
                   Community Q&A
+                </MobileLink>
+                <MobileLink to="/opportunities" onClick={() => setOpen(false)}>
+                  Opportunities
                 </MobileLink>
 
                 {!user ? (

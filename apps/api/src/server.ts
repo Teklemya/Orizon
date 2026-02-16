@@ -34,7 +34,9 @@ app.post("/ai/roadmap/generate", async (req, res) => {
   const input = parsed.data as GenInput;
 
   try {
-    const schools = pickSchools(input.targetUniversities, input.level);
+    const schools = await pickSchools(
+      input.targetUniversities,
+      input.level);
     const out = await generateRoadmap(input, schools);
     res.json(out);
   } catch (err: any) {

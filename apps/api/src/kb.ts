@@ -1,32 +1,68 @@
-import fs from "fs";
-import path from "path";
+import { pool } from "./db";
 import type { SchoolKB, Level } from "./types";
 
-let cache: SchoolKB[] | null = null;
+// Pick schools by ID and filter by level (DB-backed)
+export async function pickSchools(
+  ids?: string[],
+  level?: Level
+): Promise<SchoolKB[]> {
+  const params: any[] = [];
+  const whereClauses: string[] = [];
 
-// Load schools.json once (cached)
-export function loadSchools(): SchoolKB[] {
-  if (cache) return cache;
-  const p = path.resolve(__dirname, "../data/schools.json");
-  cache = JSON.parse(fs.readFileSync(p, "utf-8"));
-  return cache!;
+  if (ids && ids.length > 0) {
+    params.push(ids);
+    whereClauses.push(`id = any($${params.length})`);
+  }
+
+  if (level) {
+    params.push(level);
+    whereClauses.push(`$${params.length} = any(level)`);
+  }
+
+  const where =
+    whereClauses.length > 0
+      ? `where ${whereClauses.join(" and ")}`
+      : "";
+
+  const q = `
+    select
+      id,
+      name,
+      level,
+      city,
+      state,
+      country,
+      image_url,
+      short_description,
+      admissions_link,
+      international_link,
+      english_policy_link
+    from schools
+    ${where}
+    order by name asc
+    limit 5
+  `;
+
+  const { rows } = await pool.query(q, params);
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    level: r.level,
+    city: r.city ?? undefined,
+    state: r.state ?? undefined,
+    country: r.country ?? undefined,
+    imageUrl: r.image_url ?? undefined,
+    shortDescription: r.short_description ?? undefined,
+    links: {
+      admissions: r.admissions_link ?? undefined,
+      international: r.international_link ?? undefined,
+      english_policy: r.english_policy_link ?? undefined,
+    },
+  }));
 }
 
-// Pick schools by ID and filter by level
-export function pickSchools(ids?: string[], level?: Level): SchoolKB[] {
-  const all = loadSchools();
-
-  // If user chooses specific IDs
-  let sel =
-    ids && ids.length ? all.filter((s) => ids.includes(s.id)) : all.slice(0, 3);
-
-  // Filter by level (Undergrad / Graduate)
-  if (level) sel = sel.filter((s) => s.level.includes(level));
-
-  return sel;
-}
-
-// Build "Sources" list from links (stable)
+// Build "Sources" list from links (unchanged)
 export function schoolSources(
   schools: SchoolKB[]
 ): { title: string; url: string }[] {
@@ -45,7 +81,6 @@ export function schoolSources(
     }
   }
 
-  // Global authoritative visa resources
   out.push(
     {
       title: "U.S. Dept. of State — DS-160",

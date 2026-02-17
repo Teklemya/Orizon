@@ -17,20 +17,26 @@ import opportunitiesRouter from "./opportunities";
 
 const app = express();
 
+function normalizeOrigin(value: string) {
+  return value.trim().replace(/\/+$/, "");
+}
+
 const allowedOrigins = (
   process.env.CORS_ALLOWED_ORIGINS ||
   "https://orizon-web.vercel.app,http://localhost:5173,http://localhost:3000"
 )
   .split(",")
-  .map((origin) => origin.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
 
 const corsOptions: CorsOptions = {
   origin(origin, callback) {
     // Allow non-browser requests that do not include Origin.
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    const normalizedOrigin = normalizeOrigin(origin);
+    if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],

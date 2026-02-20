@@ -1,6 +1,7 @@
 {
   "name": "@orizon/api",
   "private": true,
+  "packageManager": "pnpm@10.17.1",
   "version": "0.1.0",
   "type": "commonjs",
   "main": "dist/server.js",

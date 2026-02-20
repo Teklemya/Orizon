@@ -1,9 +1,5 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
-
 type EssayFeedbackInput = {
   promptContext: string;
   draft: string;
@@ -18,6 +14,13 @@ type EssayFeedback = {
 export async function getEssayFeedback(
   input: EssayFeedbackInput
 ): Promise<EssayFeedback> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const client = new OpenAI({ apiKey });
+
   const systemPrompt =
     "You are an experienced college admissions writing coach. Be encouraging but honest and concise.";
 

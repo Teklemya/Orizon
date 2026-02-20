@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   // Fetch opportunities from API
   useEffect(() => {
-    fetch(`${API_BASE}api/opportunities`)
+    fetch(`${API_BASE}/api/opportunities`)
       .then((res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();

@@ -29,7 +29,12 @@ const corsOptions: CorsOptions = {
   origin(origin, callback) {
     // Allow non-browser requests that do not include Origin.
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    const ok =
+    allowedOrigins.includes(origin) ||
+    /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/.test(origin);
+
+    if (ok) return callback(null, true);
     return callback(new Error(`Origin not allowed by CORS: ${origin}`));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -38,7 +43,7 @@ const corsOptions: CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("*", cors(corsOptions), (req, res) => res.sendStatus(204));
 app.use(express.json());
 
 // ====== AI ROADMAP ENDPOINT ======

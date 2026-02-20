@@ -3,12 +3,58 @@ import { Router } from "express";
 import { pool } from "./db";
 
 const router = Router();
+let schemaInit: Promise<void> | null = null;
+
+async function ensureSchema() {
+  if (!schemaInit) {
+    schemaInit = (async () => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS questions (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL,
+          author TEXT,
+          category TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS tags (
+          id SERIAL PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS question_tags (
+          question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+          tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+          PRIMARY KEY (question_id, tag_id)
+        )
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS questions_created_at_idx ON questions(created_at DESC)`
+      );
+    })().catch((err) => {
+      schemaInit = null;
+      throw err;
+    });
+  }
+
+  await schemaInit;
+}
+
+function getErrorCode(err: unknown): string | undefined {
+  if (typeof err !== "object" || err === null) return undefined;
+  const maybeCode = (err as { code?: unknown }).code;
+  return typeof maybeCode === "string" ? maybeCode : undefined;
+}
 
 // ==========================
 // GET /api/questions
 // ==========================
 router.get("/", async (_req: any, res: any) => {
   try {
+    await ensureSchema();
     const { rows } = await pool.query(`
       SELECT 
         q.id,
@@ -27,7 +73,10 @@ router.get("/", async (_req: any, res: any) => {
     res.json(rows);
   } catch (err) {
     console.error("GET /questions error:", err);
-    res.status(500).json({ error: "Failed to fetch questions" });
+    res.status(500).json({
+      error: "Failed to fetch questions",
+      code: getErrorCode(err),
+    });
   }
 });
 
@@ -36,6 +85,7 @@ router.get("/", async (_req: any, res: any) => {
 // ==========================
 router.post("/", async (req: any, res: any) => {
   try {
+    await ensureSchema();
     const { title, body, author, tags, category } = req.body;
 
     // 1) Insert question (with category)
@@ -81,7 +131,10 @@ router.post("/", async (req: any, res: any) => {
     res.status(201).json({ success: true, id: questionId });
   } catch (err) {
     console.error("POST /questions error:", err);
-    res.status(500).json({ error: "Failed to create question" });
+    res.status(500).json({
+      error: "Failed to create question",
+      code: getErrorCode(err),
+    });
   }
 });
 

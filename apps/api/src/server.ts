@@ -29,6 +29,7 @@ const previewOriginPatterns = [
   /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/,
   /^https:\/\/orizon-[a-z0-9-]+-projects\.vercel\.app$/,
   /^https:\/\/orizon-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
 ];
 
 const corsOptions: CorsOptions = {

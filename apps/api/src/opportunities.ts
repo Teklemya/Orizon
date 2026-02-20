@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router } from "express";
 import { pool } from "./db";
 import { z } from "zod";
 
@@ -15,7 +15,7 @@ const CreateSchema = z.object({
 });
 
 // GET /api/opportunities
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", async (req: any, res: any) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, title, description, type, location, paid, deadline, link, posted_at FROM opportunities ORDER BY posted_at DESC`
@@ -28,7 +28,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // POST /api/opportunities
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", async (req: any, res: any) => {
   const parsed = CreateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -50,7 +50,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // DELETE /api/opportunities/:id
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
   if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 

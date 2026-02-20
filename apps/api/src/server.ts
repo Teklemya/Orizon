@@ -3,7 +3,6 @@ import "dotenv/config";
 import express from "express";
 import cors, { type CorsOptions } from "cors";
 import { z } from "zod";
-import type { Request, Response } from "express";
 
 import { pickSchools } from "./kb";
 import { generateRoadmap } from "./roadmap/generate";
@@ -50,7 +49,7 @@ const corsOptions: CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions), (_req: Request, res: Response) =>
+app.options("*", cors(corsOptions), (_req: any, res: any) =>
   res.sendStatus(204)
 );
 app.use(express.json());
@@ -65,7 +64,7 @@ const GenSchema = z.object({
   targetUniversities: z.array(z.string()).optional(),
 });
 
-app.post("/ai/roadmap/generate", async (req: Request, res: Response) => {
+app.post("/ai/roadmap/generate", async (req: any, res: any) => {
   const parsed = GenSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -90,7 +89,7 @@ const EssaySchema = z.object({
   draft: z.string().min(1, "Draft is required"),
 });
 
-app.post("/ai/essay/feedback", async (req: Request, res: Response) => {
+app.post("/ai/essay/feedback", async (req: any, res: any) => {
   const parsed = EssaySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -123,10 +122,10 @@ app.use("/api/questions", questionsRouter);
 app.use("/api/opportunities", opportunitiesRouter);
 
 // ====== HEALTH CHECK + ROOT ======
-app.get("/", (_req: Request, res: Response) =>
+app.get("/", (_req: any, res: any) =>
   res.send("Orizon AI API is running")
 );
-app.get("/health", (_req: Request, res: Response) => res.json({ ok: true }));
+app.get("/health", (_req: any, res: any) => res.json({ ok: true }));
 
 if (process.env.VERCEL !== "1") {
   const PORT = process.env.PORT || 4000;

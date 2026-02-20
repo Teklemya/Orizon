@@ -1,5 +1,5 @@
 // apps/api/src/questions.ts
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { pool } from "./db";
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 // ==========================
 // GET /api/questions
 // ==========================
-router.get("/", async (req, res) => {
+router.get("/", async (_req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
@@ -34,7 +34,7 @@ router.get("/", async (req, res) => {
 // ==========================
 // POST /api/questions
 // ==========================
-router.post("/", async (req, res) => {
+router.post("/", async (req: Request, res: Response) => {
   try {
     const { title, body, author, tags, category } = req.body;
 

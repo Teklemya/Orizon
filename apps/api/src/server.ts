@@ -25,14 +25,20 @@ const allowedOrigins = (
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const previewOriginPatterns = [
+  /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+-projects\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+\.vercel\.app$/,
+];
+
 const corsOptions: CorsOptions = {
   origin(origin, callback) {
     // Allow non-browser requests that do not include Origin.
     if (!origin) return callback(null, true);
 
     const ok =
-    allowedOrigins.includes(origin) ||
-    /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/.test(origin);
+      allowedOrigins.includes(origin) ||
+      previewOriginPatterns.some((pattern) => pattern.test(origin));
 
     if (ok) return callback(null, true);
     return callback(new Error(`Origin not allowed by CORS: ${origin}`));

@@ -1,6 +1,7 @@
 {
   "name": "orizon",
   "private": true,
+  "packageManager": "pnpm@10.17.1",
   "workspaces": [
     "apps/*",
     "packages/*"

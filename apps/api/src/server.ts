@@ -25,11 +25,22 @@ const allowedOrigins = (
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const previewOriginPatterns = [
+  /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+-projects\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+\.vercel\.app$/,
+];
+
 const corsOptions: CorsOptions = {
   origin(origin, callback) {
     // Allow non-browser requests that do not include Origin.
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    const ok =
+      allowedOrigins.includes(origin) ||
+      previewOriginPatterns.some((pattern) => pattern.test(origin));
+
+    if (ok) return callback(null, true);
     return callback(new Error(`Origin not allowed by CORS: ${origin}`));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -38,7 +49,9 @@ const corsOptions: CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("*", cors(corsOptions), (_req: any, res: any) =>
+  res.sendStatus(204)
+);
 app.use(express.json());
 
 // ====== AI ROADMAP ENDPOINT ======
@@ -51,7 +64,7 @@ const GenSchema = z.object({
   targetUniversities: z.array(z.string()).optional(),
 });
 
-app.post("/ai/roadmap/generate", async (req, res) => {
+app.post("/ai/roadmap/generate", async (req: any, res: any) => {
   const parsed = GenSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -76,7 +89,7 @@ const EssaySchema = z.object({
   draft: z.string().min(1, "Draft is required"),
 });
 
-app.post("/ai/essay/feedback", async (req, res) => {
+app.post("/ai/essay/feedback", async (req: any, res: any) => {
   const parsed = EssaySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -109,8 +122,10 @@ app.use("/api/questions", questionsRouter);
 app.use("/api/opportunities", opportunitiesRouter);
 
 // ====== HEALTH CHECK + ROOT ======
-app.get("/", (_req, res) => res.send("Orizon AI API is running"));
-app.get("/health", (_req, res) => res.json({ ok: true }));
+app.get("/", (_req: any, res: any) =>
+  res.send("Orizon AI API is running")
+);
+app.get("/health", (_req: any, res: any) => res.json({ ok: true }));
 
 if (process.env.VERCEL !== "1") {
   const PORT = process.env.PORT || 4000;

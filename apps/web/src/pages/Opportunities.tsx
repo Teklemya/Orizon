@@ -41,7 +41,7 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetch(`${API_BASE}api/opportunities`)
+    fetch(`${API_BASE}/api/opportunities`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
@@ -111,7 +111,7 @@ export default function OpportunitiesPage() {
       link: form.link || undefined,
     };
 
-    fetch(`${API_BASE}api/opportunities`, {
+    fetch(`${API_BASE}/api/opportunities`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -143,7 +143,7 @@ export default function OpportunitiesPage() {
   }
 
   function removeItem(id: number) {
-    fetch(`${API_BASE}api/opportunities/${id}`, { method: "DELETE" })
+    fetch(`${API_BASE}/api/opportunities/${id}`, { method: "DELETE" })
       .then((res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         setItems((s) => s.filter((x) => x.id !== id));

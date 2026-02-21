@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import RoadmapBuilder from "../components/RoadmapBuilder";
 import RoadmapList from "../components/RoadmapList";
 import type { Step } from "../lib/api";
+import { API_BASE } from "../lib/apiBase";
 
 type SavedRoadmap = {
   id: number;
@@ -20,6 +21,10 @@ export default function Dashboard() {
   const [saveLabel, setSaveLabel] = useState("");
   const [openSavedId, setOpenSavedId] = useState<number | null>(null);
 
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [oppLoading, setOppLoading] = useState(true);
+  const [oppError, setOppError] = useState<string | null>(null);
+
   // Load saved roadmaps from localStorage (front-end only)
   useEffect(() => {
     try {
@@ -32,6 +37,24 @@ export default function Dashboard() {
     } catch {
       // ignore parse errors for demo
     }
+  }, []);
+
+  // Fetch opportunities from API
+  useEffect(() => {
+    fetch(`${API_BASE}/api/opportunities`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+      })
+      .then((data: any[]) => {
+        setOpportunities(data);
+        setOppLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load opportunities:", err);
+        setOppError("Failed to load opportunities");
+        setOppLoading(false);
+      });
   }, []);
 
   function persistSaved(next: SavedRoadmap[]) {
@@ -85,33 +108,71 @@ export default function Dashboard() {
             setSources(srcs);
           }}
         />
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl shadow p-6">
+                <h3 className="text-lg font-semibold">Opportunities</h3>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl shadow p-6">
-            <h3 className="text-lg font-semibold">Opportunities</h3>
-            <p className="text-sm text-gray-600">No data yet.</p>
-          </div>
+                <div className="space-y-3 mt-3">
+                  {oppLoading && <div className="text-sm text-gray-500">Loading…</div>}
+                  {oppError && <div className="text-sm text-red-500">{oppError}</div>}
+                  {!oppLoading && opportunities.length === 0 && <div className="text-sm text-gray-500">No opportunities yet.</div>}
 
-          {sources.length > 0 && (
-            <div className="bg-white rounded-2xl shadow p-6">
-              <h3 className="text-lg font-semibold mb-2">Sources</h3>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                {sources.map((s) => (
-                  <li key={s.url}>
+                  {opportunities.slice(0, 3).map((o) => (
+                    <div key={o.id} className="border rounded-lg p-3 bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <a
+                            href={o.link || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-medium text-gray-800 hover:underline"
+                          >
+                            {o.title}
+                          </a>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
+                          </div>
+                        </div>
+                        {o.deadline && (
+                          <div className="text-[11px] text-gray-400">
+                            due {new Date(o.deadline).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="mt-2 text-right">
                     <a
-                      className="text-blue-600 hover:underline"
-                      href={s.url}
-                      target="_blank"
-                      rel="noreferrer"
+                      href="/opportunities"
+                      className="text-sm text-blue-600 hover:underline"
                     >
-                      {s.title}
+                      View all opportunities →
                     </a>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                </div>
+              </div>
+
+              {sources.length > 0 && (
+                <div className="bg-white rounded-2xl shadow p-6">
+                  <h3 className="text-lg font-semibold mb-2">Sources</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    {sources.map((s) => (
+                      <li key={s.url}>
+                        <a
+                          className="text-blue-600 hover:underline"
+                          href={s.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {s.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-          )}
-        </div>
       </div>
 
       {/* Generated Roadmap (current) with inline "Save roadmap" */}

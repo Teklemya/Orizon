@@ -1,7 +1,7 @@
 // apps/api/src/server.ts
 import "dotenv/config";
 import express from "express";
-import cors from "cors";
+import cors, { type CorsOptions } from "cors";
 import { z } from "zod";
 
 import { pickSchools } from "./kb";
@@ -12,9 +12,46 @@ import { getEssayFeedback } from "./essay/feedback";
 
 // 👇 NEW: Community Q&A route
 import questionsRouter from "./questions";
+// Opportunities route
+import opportunitiesRouter from "./opportunities";
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = (
+  process.env.CORS_ALLOWED_ORIGINS ||
+  "https://orizon-web.vercel.app,http://localhost:5173,http://localhost:3000"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const previewOriginPatterns = [
+  /^https:\/\/orizon-web-[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+-projects\.vercel\.app$/,
+  /^https:\/\/orizon-[a-z0-9-]+\.vercel\.app$/,
+];
+
+const corsOptions: CorsOptions = {
+  origin(origin, callback) {
+    // Allow non-browser requests that do not include Origin.
+    if (!origin) return callback(null, true);
+
+    const ok =
+      allowedOrigins.includes(origin) ||
+      previewOriginPatterns.some((pattern) => pattern.test(origin));
+
+    if (ok) return callback(null, true);
+    return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions), (_req: any, res: any) =>
+  res.sendStatus(204)
+);
 app.use(express.json());
 
 // ====== AI ROADMAP ENDPOINT ======
@@ -27,7 +64,7 @@ const GenSchema = z.object({
   targetUniversities: z.array(z.string()).optional(),
 });
 
-app.post("/ai/roadmap/generate", async (req, res) => {
+app.post("/ai/roadmap/generate", async (req: any, res: any) => {
   const parsed = GenSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -52,7 +89,7 @@ const EssaySchema = z.object({
   draft: z.string().min(1, "Draft is required"),
 });
 
-app.post("/ai/essay/feedback", async (req, res) => {
+app.post("/ai/essay/feedback", async (req: any, res: any) => {
   const parsed = EssaySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
@@ -81,11 +118,20 @@ app.get("/ai/schools", listSchoolsHandler);
 // ====== COMMUNITY Q&A ROUTE (NEW) ======
 app.use("/api/questions", questionsRouter);
 
-// ====== HEALTH CHECK + ROOT ======
-app.get("/", (_req, res) => res.send("Orizon AI API is running"));
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// ====== OPPORTUNITIES ROUTE ======
+app.use("/api/opportunities", opportunitiesRouter);
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`AI generator on http://localhost:${PORT}`);
-});
+// ====== HEALTH CHECK + ROOT ======
+app.get("/", (_req: any, res: any) =>
+  res.send("Orizon AI API is running")
+);
+app.get("/health", (_req: any, res: any) => res.json({ ok: true }));
+
+if (process.env.VERCEL !== "1") {
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, () => {
+    console.log(`AI generator on http://localhost:${PORT}`);
+  });
+}
+
+export default app;

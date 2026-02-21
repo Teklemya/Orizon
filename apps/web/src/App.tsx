@@ -18,6 +18,7 @@ import Layout from "./layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Dashboard from "./pages/Dashboard";
+import Opportunities from "./pages/Opportunities";
 import EssayStudio from "./pages/EssayStudio";
 import CommunityQA from "./pages/CommunityQA";
 import Login from "./pages/Login";
@@ -27,7 +28,13 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        {/* Public routes - no auth required */}
+        {/* default -> Explore/Dashboard */}
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/explore" element={<Dashboard />} />
+
+        <Route path="/essay-studio" element={<EssayStudio />} />
+        <Route path="/opportunities" element={<Opportunities />} />
+        <Route path="/community" element={<CommunityQA />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 

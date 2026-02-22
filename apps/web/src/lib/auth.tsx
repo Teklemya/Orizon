@@ -62,6 +62,15 @@ function normalizeRedirectBase(url: string | undefined): string | null {
   return withProtocol.replace(/\/+$/, "");
 }
 
+function getHost(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
 const isLocalHost =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1" ||
@@ -71,9 +80,23 @@ const normalizedConfiguredRedirectBase = normalizeRedirectBase(
   configuredAuthRedirectBase
 );
 
+const runtimeOrigin = window.location.origin.replace(/\/+$/, "");
+const runtimeHost = window.location.hostname;
+const configuredHost = getHost(normalizedConfiguredRedirectBase);
+
+const isVercelPreview =
+  runtimeHost.endsWith(".vercel.app") &&
+  !!configuredHost &&
+  runtimeHost !== configuredHost;
+
+const isPrivateNetworkHost =
+  /^10\./.test(runtimeHost) ||
+  /^192\.168\./.test(runtimeHost) ||
+  /^172\.(1[6-9]|2\d|3[0-1])\./.test(runtimeHost);
+
 const authRedirectBase =
-  isLocalHost
-    ? window.location.origin
+  isLocalHost || isVercelPreview || isPrivateNetworkHost
+    ? runtimeOrigin
     : normalizedConfiguredRedirectBase || window.location.origin;
 
 function buildRedirectUrl(path = ""): string {

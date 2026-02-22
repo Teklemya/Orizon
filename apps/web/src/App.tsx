@@ -13,7 +13,7 @@
  * - /community
  */
 
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -28,19 +28,16 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        {/* default -> Explore/Dashboard */}
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/explore" element={<Dashboard />} />
-
-        <Route path="/essay-studio" element={<EssayStudio />} />
-        <Route path="/opportunities" element={<Opportunities />} />
-        <Route path="/community" element={<CommunityQA />} />
+        {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
+        {/* Default route */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
         {/* Protected routes - require authentication */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
@@ -64,6 +61,14 @@ export default function App() {
           }
         />
         <Route
+          path="/opportunities"
+          element={
+            <ProtectedRoute>
+              <Opportunities />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/community"
           element={
             <ProtectedRoute>
@@ -72,15 +77,8 @@ export default function App() {
           }
         />
 
-        {/* Fallback to dashboard (protected) */}
-        <Route
-          path="*"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );

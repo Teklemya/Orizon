@@ -47,9 +47,12 @@ To enable "Sign in with Google":
 1. Go to **Authentication** → **Providers** in Supabase dashboard
 2. Enable **Google** provider
 3. Follow the setup wizard to get OAuth credentials from Google Cloud Console
-4. Add authorized redirect URLs:
-   - Development: `http://localhost:5173`
-   - Production: `https://yourdomain.com`
+4. Configure **Authentication -> URL Configuration**:
+   - **Site URL**: your production web URL (example: `https://your-app.vercel.app`)
+   - **Redirect URLs**:
+     - `https://your-app.vercel.app`
+     - `https://your-app.vercel.app/reset-password`
+     - `https://your-app.vercel.app/dashboard` (or wildcard if preferred)
 
 ### 4. Start the App
 
@@ -277,7 +280,10 @@ SELECT * FROM auth.users;
 ### Google OAuth not working
 
 - Verify Google provider is enabled in Supabase dashboard
-- Check authorized redirect URLs include your domain
+- Check **Authentication -> URL Configuration** in Supabase:
+  - `Site URL` must be your production frontend URL
+  - Redirect URLs must include your production callback URLs
+- If OAuth redirects to `http://localhost:3000/#access_token=...`, your Supabase `Site URL` is still set to localhost
 - Make sure OAuth credentials are correctly configured
 
 ### Profile not created on signup
@@ -304,6 +310,7 @@ SELECT * FROM auth.users;
 ```env
 VITE_SUPABASE_URL=https://hcfkhrrhkjidacrkfihi.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGc...
+VITE_AUTH_REDIRECT_URL=https://your-app.vercel.app
 ```
 
 ### Where to Find

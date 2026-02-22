@@ -131,6 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if email confirmation is required
     const needsConfirmation = data.user && !data.session;
 
+    // If confirmation is not required, session exists and user is signed in.
+    if (data.session?.user) {
+      setUser(mapSupabaseUser(data.session.user));
+      setLoading(false);
+    }
+
     return { needsConfirmation: !!needsConfirmation };
   }
 
@@ -141,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ error?: string }> {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -149,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return { error: error.message };
     }
+
+    // Set user immediately to avoid route-guard race conditions on navigation.
+    setUser(mapSupabaseUser(data.user ?? null));
+    setLoading(false);
 
     return {};
   }
@@ -178,6 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   async function signOut(): Promise<void> {
     await supabase.auth.signOut();
+    setUser(null);
+    setLoading(false);
   }
 
   /**

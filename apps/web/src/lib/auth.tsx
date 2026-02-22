@@ -56,10 +56,25 @@ const configuredAuthRedirectBase = (
   import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined
 )?.trim();
 
+function normalizeRedirectBase(url: string | undefined): string | null {
+  if (!url) return null;
+  const withProtocol = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  return withProtocol.replace(/\/+$/, "");
+}
+
+const isLocalHost =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname === "::1";
+
+const normalizedConfiguredRedirectBase = normalizeRedirectBase(
+  configuredAuthRedirectBase
+);
+
 const authRedirectBase =
-  configuredAuthRedirectBase && configuredAuthRedirectBase.length > 0
-    ? configuredAuthRedirectBase.replace(/\/+$/, "")
-    : window.location.origin;
+  isLocalHost
+    ? window.location.origin
+    : normalizedConfiguredRedirectBase || window.location.origin;
 
 function buildRedirectUrl(path = ""): string {
   if (!path) return authRedirectBase;
@@ -171,8 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redirect to app origin so callbacks stay valid across deployed domains.
-        redirectTo: buildRedirectUrl(),
+        // Redirect directly to a stable protected route to avoid losing URL tokens.
+        redirectTo: buildRedirectUrl("/dashboard"),
       },
     });
 

@@ -7,7 +7,7 @@ const router = Router();
 // ==========================
 // GET /api/questions
 // ==========================
-router.get("/", async (req, res) => {
+router.get("/", async (_req: any, res: any) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
@@ -35,7 +35,7 @@ router.get("/", async (req, res) => {
 // ==========================
 // POST /api/questions
 // ==========================
-router.post("/", async (req, res) => {
+router.post("/", async (req: any, res: any) => {
   try {
     const { title, body, author, email, tags, category } = req.body;
 

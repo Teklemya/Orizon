@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_BASE } from "../lib/apiBase";
 
 type EssayFeedback = {
   overall: string;
@@ -24,7 +25,7 @@ export default function EssayStudio() {
     setFeedback(null);
 
     try {
-      const res = await fetch("/ai/essay/feedback", {
+      const res = await fetch(`${API_BASE}/ai/essay/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

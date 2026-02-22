@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/auth";
+import { API_BASE } from "../lib/apiBase";
 import RichTextEditor from "../components/RichTextEditor";
 
 type Answer = {
@@ -51,7 +52,9 @@ export default function CommunityQA() {
   const [filter, setFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  // create question form
+  const API_URL = `${API_BASE}/api/questions`;
+
+  // ✅ Dummy + common categories (your system vocabulary)
   const BASE_CATEGORIES = [
     "Visa",
     "Housing",

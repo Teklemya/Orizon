@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../lib/apiBase";
+import type { Step } from "../lib/api";
 
 type Level = "Undergrad" | "Graduate";
-
-type Step = {
-  id: number;
-  title: string;
-  stage: "Pre-Arrival" | "Visa" | "Post-Arrival";
-  status: "pending" | "in-progress" | "done";
-  dueDate: string | null;
-  deps: number[];
-  description?: string;
-};
 
 type School = {
   id: string;
@@ -40,13 +32,19 @@ export default function RoadmapBuilder({
 
   // ---- load schools from backend once ----
   useEffect(() => {
+    const controller = new AbortController();
+    let mounted = true;
+
     async function load() {
       try {
         setLoadingSchools(true);
         setErr(null);
-        const res = await fetch("/ai/schools");
+        const res = await fetch(`${API_BASE}/ai/schools`, {
+          signal: controller.signal,
+        });
         if (!res.ok) throw new Error(`Failed to load universities`);
         const data = await res.json();
+        if (!mounted) return;
         const simple: School[] = data.map((s: any) => ({
           id: s.id,
           name: s.name,
@@ -56,13 +54,20 @@ export default function RoadmapBuilder({
           setSelectedSchoolId(simple[0].id); // default to first school
         }
       } catch (e: any) {
+        if (controller.signal.aborted) return;
         console.error(e);
         setErr(e?.message ?? "Error loading universities");
       } finally {
+        if (!mounted) return;
         setLoadingSchools(false);
       }
     }
     load();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -91,7 +96,7 @@ export default function RoadmapBuilder({
         payload.intendedMajor = intendedMajor.trim();
       }
 
-      const res = await fetch("/ai/roadmap/generate", {
+      const res = await fetch(`${API_BASE}/ai/roadmap/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

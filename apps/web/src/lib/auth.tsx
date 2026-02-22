@@ -56,10 +56,48 @@ const configuredAuthRedirectBase = (
   import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined
 )?.trim();
 
+function normalizeRedirectBase(url: string | undefined): string | null {
+  if (!url) return null;
+  const withProtocol = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  return withProtocol.replace(/\/+$/, "");
+}
+
+function getHost(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const isLocalHost =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname === "::1";
+
+const normalizedConfiguredRedirectBase = normalizeRedirectBase(
+  configuredAuthRedirectBase
+);
+
+const runtimeOrigin = window.location.origin.replace(/\/+$/, "");
+const runtimeHost = window.location.hostname;
+const configuredHost = getHost(normalizedConfiguredRedirectBase);
+
+const isVercelPreview =
+  runtimeHost.endsWith(".vercel.app") &&
+  !!configuredHost &&
+  runtimeHost !== configuredHost;
+
+const isPrivateNetworkHost =
+  /^10\./.test(runtimeHost) ||
+  /^192\.168\./.test(runtimeHost) ||
+  /^172\.(1[6-9]|2\d|3[0-1])\./.test(runtimeHost);
+
 const authRedirectBase =
-  configuredAuthRedirectBase && configuredAuthRedirectBase.length > 0
-    ? configuredAuthRedirectBase.replace(/\/+$/, "")
-    : window.location.origin;
+  isLocalHost || isVercelPreview || isPrivateNetworkHost
+    ? runtimeOrigin
+    : normalizedConfiguredRedirectBase || window.location.origin;
 
 function buildRedirectUrl(path = ""): string {
   if (!path) return authRedirectBase;
@@ -131,6 +169,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if email confirmation is required
     const needsConfirmation = data.user && !data.session;
 
+    // If confirmation is not required, session exists and user is signed in.
+    if (data.session?.user) {
+      setUser(mapSupabaseUser(data.session.user));
+      setLoading(false);
+    }
+
     return { needsConfirmation: !!needsConfirmation };
   }
 
@@ -141,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ error?: string }> {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -149,6 +193,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return { error: error.message };
     }
+
+    // Set user immediately to avoid route-guard race conditions on navigation.
+    setUser(mapSupabaseUser(data.user ?? null));
+    setLoading(false);
 
     return {};
   }
@@ -161,8 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Redirect to app origin so callbacks stay valid across deployed domains.
-        redirectTo: buildRedirectUrl(),
+        // Redirect directly to a stable protected route to avoid losing URL tokens.
+        redirectTo: buildRedirectUrl("/dashboard"),
       },
     });
 
@@ -178,6 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   async function signOut(): Promise<void> {
     await supabase.auth.signOut();
+    setUser(null);
+    setLoading(false);
   }
 
   /**

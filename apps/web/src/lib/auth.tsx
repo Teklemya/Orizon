@@ -52,6 +52,20 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+const configuredAuthRedirectBase = (
+  import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined
+)?.trim();
+
+const authRedirectBase =
+  configuredAuthRedirectBase && configuredAuthRedirectBase.length > 0
+    ? configuredAuthRedirectBase.replace(/\/+$/, "")
+    : window.location.origin;
+
+function buildRedirectUrl(path = ""): string {
+  if (!path) return authRedirectBase;
+  return `${authRedirectBase}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         // Email confirmation redirect (if enabled in Supabase settings)
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: buildRedirectUrl("/dashboard"),
       },
     });
 
@@ -147,7 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        // Redirect to app origin so callbacks stay valid across deployed domains.
+        redirectTo: buildRedirectUrl(),
       },
     });
 
@@ -172,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string
   ): Promise<{ error?: string; success?: boolean }> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: buildRedirectUrl("/reset-password"),
     });
 
     if (error) {

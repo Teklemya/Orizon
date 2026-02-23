@@ -16,6 +16,7 @@ router.get("/", async (_req, res) => {
         q.author,
         q.category,
         q.author_id,
+        q.created_at,
         COALESCE(
           json_agg(t.name) FILTER (WHERE t.name IS NOT NULL),
           '[]'
@@ -45,7 +46,7 @@ router.post("/", async (req, res) => {
       `
       INSERT INTO questions (title, body, author, author_id, category)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
+      RETURNING id, created_at
       `,
       [title, body, author, author_id || null, category || null]
     );
@@ -80,7 +81,11 @@ router.post("/", async (req, res) => {
       }
     }
 
-    res.status(201).json({ success: true, id: questionId });
+    res.status(201).json({
+      success: true,
+      id: questionId,
+      created_at: result.rows[0].created_at,
+    });
   } catch (err) {
     console.error("POST /questions error:", err);
     res.status(500).json({ error: "Failed to create question" });

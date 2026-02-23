@@ -18,6 +18,7 @@ type Question = {
   body: string; // HTML string now
   author: string;
   author_id?: string;
+  created_at?: string; // ✅ ADDED
   tags: string[];
   category: string;
   answers: Answer[];
@@ -31,6 +32,17 @@ function safeHTML(html: string) {
   // simple fallback so empty values don't crash the render
   if (!html || typeof html !== "string") return "<p></p>";
   return html;
+}
+
+// ✅ ADDED: date formatting helper (keeps UI consistent)
+function formatDateTime(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
 }
 
 export default function CommunityQA() {
@@ -186,12 +198,12 @@ export default function CommunityQA() {
       .filter((t) => t && t !== category.toLowerCase());
 
     const payload = {
-    title: title.trim(),
-    body,
-    author: currentAuthor,
-    author_id: user?.id,
-    tags: parsedTags,
-    category: capitalize(category.trim()),
+      title: title.trim(),
+      body,
+      author: currentAuthor,
+      author_id: user?.id,
+      tags: parsedTags,
+      category: capitalize(category.trim()),
     };
 
     const res = await fetch(API_URL, {
@@ -483,6 +495,13 @@ export default function CommunityQA() {
                           {q.author}
                         </span>
 
+                        {/* ✅ ADDED: QUESTION DATE */}
+                        {q.created_at && (
+                          <span className="text-[11px] text-gray-400">
+                            {formatDateTime(q.created_at)}
+                          </span>
+                        )}
+
                         {/* TAGS */}
                         {q.tags?.map((t) => (
                           <span
@@ -579,6 +598,13 @@ export default function CommunityQA() {
                                 <p className="mt-2 text-[10px] text-gray-400">
                                   {a.author}
                                 </p>
+
+                                {/* ✅ ADDED: ANSWER DATE */}
+                                {a.created_at && (
+                                  <p className="mt-1 text-[10px] text-gray-400">
+                                    {formatDateTime(a.created_at)}
+                                  </p>
+                                )}
 
                                 {/* ANSWER OWNER ACTIONS */}
                                 {isAnswerOwner && (

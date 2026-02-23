@@ -8,7 +8,7 @@ type Answer = {
   question_id: number;
   body: string; // HTML string now
   author: string;
-  email: string;
+  author_id?: string;
   created_at?: string;
 };
 
@@ -17,7 +17,7 @@ type Question = {
   title: string;
   body: string; // HTML string now
   author: string;
-  email: string;
+  author_id?: string;
   tags: string[];
   category: string;
   answers: Answer[];
@@ -36,7 +36,6 @@ function safeHTML(html: string) {
 export default function CommunityQA() {
   const { user } = useAuth();
 
-  const currentEmail = user?.email || "";
   const currentAuthor = user ? "Demo student · Orizon" : "Demo student";
 
   // =========================
@@ -120,6 +119,7 @@ export default function CommunityQA() {
           };
         })
       );
+      console.log("First question from API:", data?.[0]);
 
       setQuestions(questionsWithAnswers);
     } catch (err) {
@@ -186,12 +186,12 @@ export default function CommunityQA() {
       .filter((t) => t && t !== category.toLowerCase());
 
     const payload = {
-      title: title.trim(),
-      body: body, // HTML
-      author: currentAuthor,
-      email: currentEmail,
-      tags: parsedTags,
-      category: capitalize(category.trim()),
+    title: title.trim(),
+    body,
+    author: currentAuthor,
+    author_id: user?.id,
+    tags: parsedTags,
+    category: capitalize(category.trim()),
     };
 
     const res = await fetch(API_URL, {
@@ -225,7 +225,7 @@ export default function CommunityQA() {
     const res = await fetch(`${API_URL}/${questionId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: currentEmail }),
+      body: JSON.stringify({ author_id: user?.id }),
     });
 
     if (!res.ok) {
@@ -264,9 +264,9 @@ export default function CommunityQA() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: editQuestionTitle.trim(),
-        body: editQuestionBody, // HTML
+        body: editQuestionBody,
         category: capitalize(editQuestionCategory.trim()),
-        email: currentEmail,
+        author_id: user?.id,
       }),
     });
 
@@ -296,9 +296,9 @@ export default function CommunityQA() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        body: replyBody, // HTML
         author: currentAuthor,
-        email: currentEmail,
+        author_id: user?.id,
+        body: replyBody,
       }),
     });
 
@@ -325,7 +325,7 @@ export default function CommunityQA() {
     const res = await fetch(`${API_URL}/${questionId}/answers/${answerId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: currentEmail }),
+      body: JSON.stringify({ author_id: user?.id }),
     });
 
     if (!res.ok) {
@@ -359,8 +359,8 @@ export default function CommunityQA() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        body: editAnswerBody, // HTML
-        email: currentEmail,
+        body: editAnswerBody,
+        author_id: user?.id,
       }),
     });
 
@@ -419,7 +419,7 @@ export default function CommunityQA() {
         ) : (
           <ul className="divide-y divide-gray-100 mt-2">
             {filtered.map((q) => {
-              const isOwner = user?.email && q.email === user.email;
+              const isOwner = user?.id && q.author_id === user.id;
 
               return (
                 <li key={q.id} className="py-3">
@@ -533,7 +533,7 @@ export default function CommunityQA() {
                     <ul className="mt-3 space-y-2">
                       {q.answers.map((a) => {
                         const isAnswerOwner =
-                          user?.email && a.email === user.email;
+                          user?.id && a.author_id === user.id;
 
                         return (
                           <li

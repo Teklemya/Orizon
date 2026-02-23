@@ -10,7 +10,7 @@ function cx(...cls: Array<string | false | null | undefined>) {
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
 
   // Breadcrumb text
   const breadcrumb =
@@ -110,7 +110,7 @@ export default function Layout() {
                 </NavLink>
               ) : (
                 <button
-                  onClick={logout}
+                  onClick={() => signOut()}
                   className="px-3 py-2 rounded-xl text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
                 >
                   Logout
@@ -159,7 +159,7 @@ export default function Layout() {
                 ) : (
                   <button
                     onClick={() => {
-                      logout();
+                      signOut();
                       setOpen(false);
                     }}
                     className="text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"

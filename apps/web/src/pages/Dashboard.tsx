@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import RoadmapBuilder from "../components/RoadmapBuilder";
+
 import RoadmapList from "../components/RoadmapList";
 import type { Step } from "../lib/api";
 import { API_BASE } from "../lib/apiBase";
@@ -35,7 +36,7 @@ export default function Dashboard() {
         setSavedRoadmaps(parsed);
       }
     } catch {
-      // ignore parse errors for demo
+      // ignore parse errors
     }
   }, []);
 
@@ -62,7 +63,7 @@ export default function Dashboard() {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      // ignore for demo
+      // ignore
     }
   }
 
@@ -71,7 +72,9 @@ export default function Dashboard() {
 
     const label =
       saveLabel.trim() ||
-      (steps[0]?.title ? `${steps[0].title.slice(0, 24)}…` : "Untitled roadmap");
+      (steps[0]?.title
+        ? `${steps[0].title.slice(0, 24)}…`
+        : "Untitled roadmap");
 
     const item: SavedRoadmap = {
       id: Date.now(),
@@ -83,7 +86,7 @@ export default function Dashboard() {
     const next = [item, ...savedRoadmaps].slice(0, 6);
     persistSaved(next);
     setSaveLabel("");
-    setOpenSavedId(item.id); // immediately open the one we just saved
+    setOpenSavedId(item.id);
   }
 
   function toggleSaved(id: number) {
@@ -92,7 +95,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Page header */}
+      {/* Header */}
       <header className="pb-4 border-b">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-gray-600">
@@ -100,7 +103,7 @@ export default function Dashboard() {
         </p>
       </header>
 
-      {/* Top grid: generator + side cards */}
+      {/* Top Grid */}
       <div className="grid md:grid-cols-2 gap-6">
         <RoadmapBuilder
           onGenerated={(generatedSteps, srcs) => {
@@ -108,82 +111,66 @@ export default function Dashboard() {
             setSources(srcs);
           }}
         />
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl shadow p-6">
-                <h3 className="text-lg font-semibold">Opportunities</h3>
 
-                <div className="space-y-3 mt-3">
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-lg font-semibold">Opportunities</h3>
+
+            <div className="space-y-3 mt-3">
                   {oppLoading && <div className="text-sm text-gray-500">Loading…</div>}
                   {oppError && <div className="text-sm text-red-500">{oppError}</div>}
                   {!oppLoading && opportunities.length === 0 && <div className="text-sm text-gray-500">No opportunities yet.</div>}
 
-                  {opportunities.slice(0, 3).map((o) => (
+              {opportunities.slice(0, 3).map((o) => (
                     <div key={o.id} className="border rounded-lg p-3 bg-gray-50">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <a
-                            href={o.link || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm font-medium text-gray-800 hover:underline"
-                          >
-                            {o.title}
-                          </a>
-                          <div className="text-xs text-gray-500 mt-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <a
+                        href={o.link || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-gray-800 hover:underline"
+                      >
+                        {o.title}
+                      </a>
+                      <div className="text-xs text-gray-500 mt-1">
                             {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
-                          </div>
-                        </div>
-                        {o.deadline && (
-                          <div className="text-[11px] text-gray-400">
-                            due {new Date(o.deadline).toLocaleDateString()}
-                          </div>
-                        )}
                       </div>
                     </div>
-                  ))}
-
-                  <div className="mt-2 text-right">
-                    <a
-                      href="/opportunities"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      View all opportunities →
-                    </a>
+                    {o.deadline && (
+                      <div className="text-[11px] text-gray-400">
+                        due {new Date(o.deadline).toLocaleDateString()}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              ))}
 
-              {sources.length > 0 && (
-                <div className="bg-white rounded-2xl shadow p-6">
-                  <h3 className="text-lg font-semibold mb-2">Sources</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    {sources.map((s) => (
-                      <li key={s.url}>
-                        <a
-                          className="text-blue-600 hover:underline"
-                          href={s.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {s.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="mt-2 text-right">
+                <a
+                  href="/opportunities"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  View all opportunities →
+                </a>
+              </div>
             </div>
+          </div>
+        </div>
       </div>
 
-      {/* Generated Roadmap (current) with inline "Save roadmap" */}
-      <RoadmapList
-        steps={steps}
-        saveLabel={saveLabel}
-        onChangeSaveLabel={setSaveLabel}
-        onSaveCurrent={steps.length ? handleSaveCurrentRoadmap : undefined}
-      />
+      {/* Generated Roadmap */}
+      {steps.length > 0 && (
+        <RoadmapList
+          steps={steps}
+          sources={sources}
+          saveLabel={saveLabel}
+          onChangeSaveLabel={setSaveLabel}
+          onSaveCurrent={handleSaveCurrentRoadmap}
+        />
+      )}
 
-      {/* Saved roadmaps that expand to show their checklist */}
+      {/* Saved Roadmaps */}
       {savedRoadmaps.length > 0 && (
         <section className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-lg font-semibold mb-3">My Roadmaps</h2>
@@ -206,11 +193,6 @@ export default function Dashboard() {
     </div>
   );
 }
-
-/**
- * A single saved roadmap row that can expand and has its own local checklist
- * state (checkboxes are demo-only, not persisted).
- */
 function SavedRoadmapCard({
   roadmap,
   isOpen,
@@ -224,7 +206,9 @@ function SavedRoadmapCard({
 
   function toggleStep(id: number) {
     setCompletedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
     );
   }
 
@@ -233,7 +217,7 @@ function SavedRoadmapCard({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-gray-50 rounded-md px-2 py-1"
+        className="w-full flex items-center justify-between gap-3 text-left hover:bg-gray-50 rounded-md px-2 py-1"
       >
         <div className="flex items-center gap-2">
           <span className="text-xs">📌</span>
@@ -241,6 +225,7 @@ function SavedRoadmapCard({
             {roadmap.label}
           </span>
         </div>
+
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-gray-400">
             {new Date(roadmap.savedAt).toLocaleString()}

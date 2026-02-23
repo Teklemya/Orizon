@@ -10,6 +10,7 @@ export type GenInput = {
   targetYear: number;            // e.g., 2026
   targetUniversities?: string[]; // ["purdue", "ucincinnati"] - ids from schools.json
   intendedMajor?: string; 
+  gpa?: number;
 };
 
 // Roadmap step shape used by backend + frontend
@@ -32,17 +33,22 @@ export type SchoolKB = {
   name: string;
   level: Level[];
 
-  // Optional metadata used for better prompts / UI
   city?: string;
   state?: string;
   country?: string;
   imageUrl?: string;
   shortDescription?: string;
 
-  // Useful links we surface as "Sources"
   links?: {
     admissions?: string;
     international?: string;
     english_policy?: string;
+  };
+
+  requirements?: {
+    satActPolicy?: string;
+    deadlines?: any;
+    english?: any;
+    lastVerifiedAt?: string;
   };
 };

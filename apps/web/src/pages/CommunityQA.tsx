@@ -36,8 +36,6 @@ function safeHTML(html: string) {
 export default function CommunityQA() {
   const { user } = useAuth();
 
-  const API_URL = "http://localhost:4000/api/questions";
-
   const currentEmail = user?.email || "";
   const currentAuthor = user ? "Demo student · Orizon" : "Demo student";
 

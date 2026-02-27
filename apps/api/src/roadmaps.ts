@@ -6,7 +6,7 @@ const router = Router();
 /* ==========================
    GET /api/roadmaps
 ========================== */
-router.get("/", async (req, res) => {
+router.get("/", async (req: any, res: any) => {
   const { author_id } = req.query;
 
   if (!author_id) {
@@ -34,7 +34,7 @@ router.get("/", async (req, res) => {
 /* ==========================
    POST /api/roadmaps
 ========================== */
-router.post("/", async (req, res) => {
+router.post("/", async (req: any, res: any) => {
   const { author_id, label, steps, sources } = req.body;
 
   if (!author_id || !label || !steps) {
@@ -50,7 +50,12 @@ router.post("/", async (req, res) => {
       VALUES ($1, $2, $3, $4)
       RETURNING id, label, steps, sources, created_at
       `,
-      [author_id, label, JSON.stringify(steps), JSON.stringify(sources || null)]
+      [
+        author_id,
+        label,
+        JSON.stringify(steps),
+        JSON.stringify(sources || null),
+      ]
     );
 
     res.status(201).json(rows[0]);
@@ -62,9 +67,8 @@ router.post("/", async (req, res) => {
 
 /* ==========================
    PATCH /api/roadmaps/:id
-   Update roadmap steps
 ========================== */
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const { author_id, steps, label } = req.body;
 
@@ -85,13 +89,13 @@ router.patch("/:id", async (req, res) => {
         AND author_id = $4
       RETURNING id, label, steps
       `,
-  [
-    steps ? JSON.stringify(steps) : null,
-    label ?? null,
-    id,
-    author_id,
-  ]
-);
+      [
+        steps ? JSON.stringify(steps) : null,
+        label ?? null,
+        id,
+        author_id,
+      ]
+    );
 
     if (rows.length === 0) {
       return res.status(403).json({ error: "Not authorized" });
@@ -107,7 +111,7 @@ router.patch("/:id", async (req, res) => {
 /* ==========================
    DELETE /api/roadmaps/:id
 ========================== */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const { author_id } = req.body;
 

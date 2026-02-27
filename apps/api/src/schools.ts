@@ -1,9 +1,8 @@
-import type { Request, Response } from "express";
 import { dbListSchools } from "./schoolsDB";
 
 export async function listSchoolsHandler(
-  _req: Request,
-  res: Response
+  _req: any,
+  res: any
 ) {
   try {
     const schools = await dbListSchools();

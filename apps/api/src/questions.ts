@@ -6,7 +6,7 @@ const router = Router();
 /* ==========================
    GET /api/questions
 ========================== */
-router.get("/", async (_req, res) => {
+router.get("/", async (_req: any, res: any) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
@@ -38,7 +38,7 @@ router.get("/", async (_req, res) => {
 /* ==========================
    POST /api/questions
 ========================== */
-router.post("/", async (req, res) => {
+router.post("/", async (req: any, res: any) => {
   try {
     const { title, body, author, author_id, tags, category } = req.body;
 
@@ -53,7 +53,6 @@ router.post("/", async (req, res) => {
 
     const questionId = result.rows[0].id;
 
-    // Handle tags
     if (tags && Array.isArray(tags)) {
       for (let rawTag of tags) {
         const tagName = rawTag.trim().toLowerCase();
@@ -95,7 +94,7 @@ router.post("/", async (req, res) => {
 /* ==========================
    PUT /api/questions/:id
 ========================== */
-router.put("/:id", async (req, res) => {
+router.put("/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const { title, body, category, author_id } = req.body;
 
@@ -126,7 +125,7 @@ router.put("/:id", async (req, res) => {
 /* ==========================
    DELETE /api/questions/:id
 ========================== */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const { author_id } = req.body;
 
@@ -156,7 +155,7 @@ router.delete("/:id", async (req, res) => {
 /* ==========================
    GET /api/questions/:id/answers
 ========================== */
-router.get("/:id/answers", async (req, res) => {
+router.get("/:id/answers", async (req: any, res: any) => {
   const { id } = req.params;
 
   try {
@@ -180,7 +179,7 @@ router.get("/:id/answers", async (req, res) => {
 /* ==========================
    POST /api/questions/:id/answers
 ========================== */
-router.post("/:id/answers", async (req, res) => {
+router.post("/:id/answers", async (req: any, res: any) => {
   const { id } = req.params;
   const { author, body, author_id } = req.body;
 
@@ -203,7 +202,7 @@ router.post("/:id/answers", async (req, res) => {
 /* ==========================
    PUT /api/questions/:questionId/answers/:answerId
 ========================== */
-router.put("/:questionId/answers/:answerId", async (req, res) => {
+router.put("/:questionId/answers/:answerId", async (req: any, res: any) => {
   const { answerId } = req.params;
   const { body, author_id } = req.body;
 
@@ -234,7 +233,7 @@ router.put("/:questionId/answers/:answerId", async (req, res) => {
 /* ==========================
    DELETE /api/questions/:questionId/answers/:answerId
 ========================== */
-router.delete("/:questionId/answers/:answerId", async (req, res) => {
+router.delete("/:questionId/answers/:answerId", async (req: any, res: any) => {
   const { answerId } = req.params;
   const { author_id } = req.body;
 

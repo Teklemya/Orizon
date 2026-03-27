@@ -1,4 +1,5 @@
 // apps/api/src/server.ts
+import roadmapsRouter from "./roadmaps";
 import "dotenv/config";
 import express from "express";
 import cors, { type CorsOptions } from "cors";
@@ -71,7 +72,9 @@ app.post("/ai/roadmap/generate", async (req: any, res: any) => {
   const input = parsed.data as GenInput;
 
   try {
-    const schools = pickSchools(input.targetUniversities, input.level);
+    const schools = await pickSchools(
+      input.targetUniversities,
+      input.level);
     const out = await generateRoadmap(input, schools);
     res.json(out);
   } catch (err: any) {
@@ -112,10 +115,13 @@ app.post("/ai/essay/feedback", async (req: any, res: any) => {
   }
 });
 
+// ====== ROADMAPS ENDPOINT ======
+app.use("/api/roadmaps", roadmapsRouter);
+
 // ====== SCHOOLS LIST ENDPOINT ======
 app.get("/ai/schools", listSchoolsHandler);
 
-// ====== COMMUNITY Q&A ROUTE (NEW) ======
+// ====== COMMUNITY Q&A ROUTE  ======
 app.use("/api/questions", questionsRouter);
 
 // ====== OPPORTUNITIES ROUTE ======

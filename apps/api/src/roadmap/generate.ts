@@ -6,21 +6,14 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-// helpers
+// ==========================
+// Date Helpers
+// ==========================
+
 function isoFromYearMonth(targetYear: number, intakeMonth: string): string {
   const monthIndex = [
-    "january",
-    "february",
-    "march",
-    "april",
-    "may",
-    "june",
-    "july",
-    "august",
-    "september",
-    "october",
-    "november",
-    "december",
+    "january","february","march","april","may","june",
+    "july","august","september","october","november","december",
   ].findIndex((m) => m.startsWith(intakeMonth.toLowerCase()));
 
   const m = Math.max(0, monthIndex);
@@ -44,59 +37,71 @@ type AiStep = {
   deps?: number[];
 };
 
+// ==========================
+// Main Generator
+// ==========================
+
 export async function generateRoadmap(
   input: GenInput,
   schools: SchoolKB[]
 ): Promise<{ steps: Step[]; sources: SourceRef[] }> {
+
   const anchor = isoFromYearMonth(input.targetYear, input.intakeMonth);
 
+  // Structured context sent to AI
   const context = {
     studentProfile: {
       country: input.country,
       level: input.level,
       intakeMonth: input.intakeMonth,
       targetYear: input.targetYear,
-      // 👇 you were already passing this; keeping it
       intendedMajor: input.intendedMajor ?? null,
+      gpa: input["gpa"] ?? null, // safe if later added
     },
     universities: schools.map((s) => ({
       id: s.id,
       name: s.name,
-      city: s.city,
-      state: s.state,
-      country: s.country ?? "USA",
+      location: {
+        city: s.city,
+        state: s.state,
+        country: s.country ?? "USA",
+      },
+      requirements: s.requirements ?? null,
     })),
   };
 
   const systemPrompt =
     "You are an expert advisor helping international students apply to U.S. universities.";
 
-  // ⭐ Updated prompt so AI uses intendedMajor + mentions exams / rough scores
   const instructions = `
-Given the following student profile and target universities, generate ONLY
-the APPLICATION part of a roadmap so the student can apply and has the chance to get into the university.
+Generate ONLY the APPLICATION PHASE roadmap (before visa stage).
 
+The student has NOT taken any exams yet.
 
-Make the steps SPECIFIC and concrete:
-- When relevant, mention real exam names such as TOEFL iBT, IELTS Academic,
-  Duolingo English Test, SAT / ACT (for undergrad), GRE or GMAT (for many graduate programs).
-- When you can, include realistic example score targets or minimums INSIDE the description,
-  like "aim for TOEFL iBT 80+ (90+ preferred)" or "IELTS 6.5+; check the university site
-  for exact requirements".
-- If the student's intendedMajor is provided, tailor the steps and examples to that field
-  (e.g. Computer Science, Engineering, Business, Biology). For example, note when STEM or
-  CS programs usually expect stronger math/quantitative scores or additional coursework.
-- Also, research the university requirements to be as updated as possible.
+Your job is to:
+
+- Tell the student WHAT they need to do to be eligible to apply.
+- Use the structured "requirements" object provided for each university.
+- Mention specific exams required (TOEFL iBT, IELTS Academic, Duolingo, SAT, ACT, GRE, GMAT).
+- When minimum scores exist in the requirements object, include them clearly.
+- If a requirement is missing, tell the student to verify on the official university site.
+- If SAT/ACT policy is "blind", clearly state that standardized tests are not considered.
+- Tailor advice slightly based on intendedMajor if provided.
+- Keep steps concrete and actionable.
 
 Rules:
 - Return between 6 and 10 steps.
-- Use clear, student-friendly titles and descriptions.
-- Each step is part of the "application" phase (before visa).
-- For each step, provide an integer "monthOffset":
-    - negative numbers = that many months BEFORE the intake month,
-    - 0 = during the intake month itself.
+- Use specific exam names.
+- Mention realistic target score ranges when available.
+- Each step must include:
+    id (number)
+    title (string)
+    description (string)
+    monthOffset (integer, negative = months before intake)
+    deps (optional array of ids)
+- Do NOT return explanations outside JSON.
 
-You MUST return ONLY valid JSON with this structure and nothing else:
+Return ONLY valid JSON in this format:
 
 {
   "steps": [
@@ -105,9 +110,8 @@ You MUST return ONLY valid JSON with this structure and nothing else:
       "title": "string",
       "description": "string",
       "monthOffset": -10,
-      "deps": [1, 2] // optional
-    },
-    ...
+      "deps": [1]
+    }
   ]
 }
 `;
@@ -116,8 +120,6 @@ You MUST return ONLY valid JSON with this structure and nothing else:
   let content = "";
 
   try {
-    console.log("📡 Calling OpenAI with context:", JSON.stringify(context));
-
     const completion = await client.chat.completions.create({
       model: "gpt-4.1-mini",
       temperature: 0.2,
@@ -129,79 +131,73 @@ You MUST return ONLY valid JSON with this structure and nothing else:
     });
 
     content = completion.choices[0]?.message?.content ?? "";
-    console.log("🤖 Raw AI content:", content);
 
-    // Sometimes models still wrap JSON in text, so strip outside text
     const start = content.indexOf("{");
     const end = content.lastIndexOf("}");
     const jsonText =
       start !== -1 && end !== -1 ? content.slice(start, end + 1) : content;
 
-    console.log("🧩 JSON candidate:", jsonText);
-
     const parsed = JSON.parse(jsonText);
+
     if (Array.isArray(parsed.steps)) {
       aiStepsRaw = parsed.steps;
-      console.log("✅ Parsed AI steps:", aiStepsRaw.length);
-    } else {
-      console.warn("⚠️ Parsed JSON but 'steps' is not an array:", parsed);
     }
   } catch (err) {
-    console.error("❌ Error in AI / JSON pipeline:", err);
-    console.error("❌ Content that failed to parse:", content);
+    console.error("AI generation failed:", err);
   }
 
-  // Fallback if nothing from AI
+  // ==========================
+  // Fallback
+  // ==========================
+
   if (!aiStepsRaw.length) {
-    console.warn("⚠️ Falling back to static roadmap (no AI steps).");
     aiStepsRaw = [
       {
         id: 1,
-        title: "Research programs & requirements",
+        title: "Research university requirements",
         description:
-          "Shortlist 3–5 programs that match your goals and check their international admission requirements.",
+          "Carefully review admission requirements for each target university, including English proficiency exams and standardized test policies.",
         monthOffset: -12,
-        deps: [],
       },
       {
         id: 2,
-        title: "Plan English test and exams",
+        title: "Plan and register for English proficiency exam",
         description:
-          "Choose which English test you will take (TOEFL, IELTS, or Duolingo) and book a date that fits the universities' timelines.",
+          "Register for TOEFL iBT, IELTS Academic, or Duolingo English Test depending on what your universities accept. Aim to meet or exceed published minimum scores.",
         monthOffset: -11,
         deps: [1],
       },
       {
         id: 3,
-        title: "Gather documents & recommendations",
+        title: "Prepare for SAT / ACT or GRE / GMAT (if required)",
         description:
-          "Request transcripts, recommendation letters, and prepare your CV and personal statement drafts.",
+          "If your universities require or recommend standardized tests (SAT/ACT for undergraduate, GRE/GMAT for graduate), begin preparation and schedule exam dates early.",
         monthOffset: -10,
         deps: [1],
       },
       {
         id: 4,
-        title: "Complete online applications",
+        title: "Request transcripts and recommendation letters",
         description:
-          "Create accounts on each university portal, fill in all sections, and upload your documents.",
-        monthOffset: -8,
-        deps: [2, 3],
+          "Contact your school and recommenders early to secure official transcripts and strong recommendation letters.",
+        monthOffset: -9,
+        deps: [1],
       },
       {
         id: 5,
-        title: "Submit applications & pay fees",
+        title: "Prepare personal statement and resume",
         description:
-          "Submit your applications before the earliest deadline and pay all required application fees.",
-        monthOffset: -7,
+          "Draft and refine your personal statement, tailoring it to your intended major and each university.",
+        monthOffset: -8,
         deps: [4],
       },
       {
         id: 6,
-        title: "Track decisions & scholarships",
+        title: "Submit applications before deadlines",
         description:
-          "Monitor your email and portals for decisions and any scholarship / document follow-ups.",
-        monthOffset: -3,
-        deps: [5],
+          "Complete and submit all applications before official deadlines. Pay attention to early action or rolling admissions policies.",
+        monthOffset: -6,
+        deps: [2, 3, 5],
       },
     ];
   }
@@ -210,7 +206,7 @@ You MUST return ONLY valid JSON with this structure and nothing else:
     const id =
       typeof s.id === "number" && Number.isFinite(s.id) ? s.id : index + 1;
 
-    const monthOffsetRaw =
+    const monthOffset =
       typeof s.monthOffset === "number" ? s.monthOffset : -12 + index * 2;
 
     const deps: number[] = Array.isArray(s.deps)
@@ -223,15 +219,16 @@ You MUST return ONLY valid JSON with this structure and nothing else:
       id,
       title: String(s.title ?? `Step ${id}`),
       description: String(
-        s.description ?? "Follow the application instructions carefully."
+        s.description ?? "Follow university application instructions carefully."
       ),
       stage: "Pre-Arrival",
       status: "pending",
       deps,
-      dueDate: addMonthsISO(anchor, monthOffsetRaw),
+      dueDate: addMonthsISO(anchor, monthOffset),
     };
   });
 
   const sources = schoolSources(schools);
+
   return { steps, sources };
 }

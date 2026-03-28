@@ -10,6 +10,7 @@ import { generateRoadmap } from "./roadmap/generate";
 import type { GenInput } from "./types";
 import { listSchoolsHandler } from "./schools";
 import { getEssayFeedback } from "./essay/feedback";
+import { generatePracticePrompts } from "./essay/practicePrompts";
 
 // 👇 NEW: Community Q&A route
 import questionsRouter from "./questions";
@@ -63,6 +64,8 @@ const GenSchema = z.object({
   intakeMonth: z.string().min(3),
   targetYear: z.number().int().gte(2024).lte(2035),
   targetUniversities: z.array(z.string()).optional(),
+  intendedMajor: z.string().optional(),
+  gpa: z.number().optional(),
 });
 
 app.post("/ai/roadmap/generate", async (req: any, res: any) => {
@@ -74,7 +77,8 @@ app.post("/ai/roadmap/generate", async (req: any, res: any) => {
   try {
     const schools = await pickSchools(
       input.targetUniversities,
-      input.level);
+      input.level
+    );
     const out = await generateRoadmap(input, schools);
     res.json(out);
   } catch (err: any) {
@@ -89,20 +93,33 @@ app.post("/ai/roadmap/generate", async (req: any, res: any) => {
 // ====== ESSAY FEEDBACK ENDPOINT ======
 const EssaySchema = z.object({
   promptContext: z.string().optional(),
-  draft: z.string().min(1, "Draft is required"),
+  draftHtml: z.string().min(1, "Rich text draft is required"),
+  draftText: z.string().min(1, "Plain text draft is required"),
+});
+
+const PracticePromptSchema = z.object({
+  category: z.enum([
+    "personal-statement",
+    "why-major",
+    "scholarship",
+    "leadership",
+    "challenge-growth",
+  ]),
+  intendedMajor: z.string().optional(),
 });
 
 app.post("/ai/essay/feedback", async (req: any, res: any) => {
   const parsed = EssaySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
-  const { promptContext, draft } = parsed.data;
+  const { promptContext, draftHtml, draftText } = parsed.data;
 
   try {
     const feedback = await getEssayFeedback({
       promptContext:
         promptContext ?? "U.S. college application personal statement",
-      draft,
+      draftHtml,
+      draftText,
     });
 
     res.json(feedback);
@@ -110,6 +127,22 @@ app.post("/ai/essay/feedback", async (req: any, res: any) => {
     console.error("Error in /ai/essay/feedback:", err);
     res.status(500).json({
       error: "Failed to generate essay feedback",
+      detail: err?.message,
+    });
+  }
+});
+
+app.post("/ai/essay/practice-prompts", async (req: any, res: any) => {
+  const parsed = PracticePromptSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error);
+
+  try {
+    const prompts = await generatePracticePrompts(parsed.data);
+    res.json({ prompts });
+  } catch (err: any) {
+    console.error("Error in /ai/essay/practice-prompts:", err);
+    res.status(500).json({
+      error: "Failed to generate practice prompts",
       detail: err?.message,
     });
   }

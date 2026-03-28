@@ -152,11 +152,16 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="bg-white rounded-2xl shadow p-6">
             <h3 className="text-lg font-semibold">Opportunities</h3>
+
             <div className="space-y-3 mt-3">
               {oppLoading && (
                 <div className="text-sm text-gray-500">Loading…</div>
               )}
-              {oppError && <div className="text-sm text-red-500">{oppError}</div>}
+
+              {oppError && (
+                <div className="text-sm text-red-500">{oppError}</div>
+              )}
+
               {!oppLoading && opportunities.length === 0 && (
                 <div className="text-sm text-gray-500">No opportunities yet.</div>
               )}
@@ -177,6 +182,7 @@ export default function Dashboard() {
                         {o.type} • {o.location} • {o.paid ? "Paid" : "Unpaid"}
                       </div>
                     </div>
+
                     {o.deadline && (
                       <div className="text-[11px] text-gray-400">
                         due {new Date(o.deadline).toLocaleDateString()}
@@ -185,6 +191,15 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+
+              <div className="mt-2 text-right">
+                <a
+                  href="/opportunities"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  View all opportunities →
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -211,10 +226,10 @@ export default function Dashboard() {
           <ul className="divide-y divide-gray-100">
             {savedRoadmaps.map((r) => (
               <SavedRoadmapCard
-                roadmap={r}
                 key={r.id}
-                onToggle={() => toggleSaved(r.id)}
+                roadmap={r}
                 isOpen={openSavedId === r.id}
+                onToggle={() => toggleSaved(r.id)}
                 onUpdate={(updatedSteps, updatedLabel) => {
                   setSavedRoadmaps((prev) =>
                     prev.map((rm) =>
@@ -345,7 +360,6 @@ function SavedRoadmapCard({
                 {roadmap.label}
               </span>
 
-              {/* ✅ More obvious edit button */}
               <span
                 role="button"
                 tabIndex={0}
@@ -434,10 +448,37 @@ function SavedRoadmapCard({
                         {step.stage}
                       </span>
                     </div>
+
                     {step.description && (
                       <p className="mt-1 text-[11px] text-gray-600 whitespace-pre-line">
                         {step.description}
                       </p>
+                    )}
+
+                    {step.links && step.links.length > 0 && (
+                      <details className="mt-2 group">
+                        <summary className="flex cursor-pointer items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400 list-none [&::-webkit-details-marker]:hidden">
+                          <span className="transition-transform group-open:rotate-90">
+                            ▸
+                          </span>
+                          <span>Helpful pages</span>
+                        </summary>
+
+                        <ul className="mt-2 ml-5 space-y-1">
+                          {step.links.map((link) => (
+                            <li key={link.url}>
+                              <a
+                                href={link.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] text-blue-600 hover:underline"
+                              >
+                                {link.label}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
                   </div>
                 </div>

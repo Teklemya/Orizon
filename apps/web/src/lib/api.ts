@@ -2,6 +2,11 @@ import { API_BASE } from "./apiBase";
 
 export type Level = "Undergrad" | "Graduate";
 
+export type StepLink = {
+  label: string;
+  url: string;
+};
+
 export type Step = {
   id: number;
   title: string;
@@ -10,6 +15,7 @@ export type Step = {
   dueDate: string | null;
   deps: number[];
   description?: string;
+  links?: StepLink[];
 };
 
 export async function generateRoadmap(input: {

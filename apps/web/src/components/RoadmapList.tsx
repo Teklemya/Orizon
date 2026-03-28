@@ -24,7 +24,6 @@ export default function RoadmapList({
 
   return (
     <section className="bg-white rounded-2xl shadow p-6">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold">Generated Roadmap</h2>
@@ -56,7 +55,6 @@ export default function RoadmapList({
         )}
       </div>
 
-      {/* Steps */}
       <div className="space-y-3">
         {steps.map((step) => (
           <article
@@ -90,32 +88,63 @@ export default function RoadmapList({
                     {step.description}
                   </p>
                 )}
+
+                {step.links && step.links.length > 0 && (
+                  <details className="mt-3 group">
+                    <summary className="flex cursor-pointer items-center gap-2 text-[11px] uppercase tracking-wide text-gray-400 list-none [&::-webkit-details-marker]:hidden">
+                      <span className="transition-transform group-open:rotate-90">
+                        ▸
+                      </span>
+                      <span>Helpful pages</span>
+                    </summary>
+
+                    <ul className="mt-2 ml-5 space-y-1">
+                      {step.links.map((link) => (
+                        <li key={link.url}>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            {link.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </div>
             </div>
           </article>
         ))}
       </div>
 
-      {/* Sources Section (Now inside roadmap) */}
       {sources.length > 0 && (
         <div className="mt-6 pt-4 border-t">
-          <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">
-            Sources
-          </h3>
-          <ul className="list-disc pl-5 space-y-1 text-sm text-gray-600">
-            {sources.map((s) => (
-              <li key={s.url}>
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {s.title}
-                </a>
-              </li>
-            ))}
-          </ul>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center gap-2 text-xs uppercase tracking-wide text-gray-400 list-none [&::-webkit-details-marker]:hidden">
+              <span className="transition-transform group-open:rotate-90">
+                ▸
+              </span>
+              <span>Sources</span>
+            </summary>
+
+            <ul className="mt-3 ml-5 list-disc space-y-1 text-sm text-gray-600">
+              {sources.map((s) => (
+                <li key={s.url}>
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {s.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
         </div>
       )}
     </section>

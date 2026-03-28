@@ -8,20 +8,26 @@ export type GenInput = {
   level: Level;                  // Undergrad or Graduate
   intakeMonth: string;           // "August", "January", etc.
   targetYear: number;            // e.g., 2026
-  targetUniversities?: string[]; // ["purdue", "ucincinnati"] - ids from schools.json
-  intendedMajor?: string; 
+  targetUniversities?: string[]; // ["purdue", "ucincinnati"]
+  intendedMajor?: string;
   gpa?: number;
+};
+
+export type StepLink = {
+  label: string;
+  url: string;
 };
 
 // Roadmap step shape used by backend + frontend
 export type Step = {
   id: number;
   title: string;
-  stage: "Pre-Arrival" | "Visa" | "Post-Arrival"; // we treat "Pre-Arrival" as Application for now
+  stage: "Pre-Arrival" | "Visa" | "Post-Arrival";
   status: "pending" | "in-progress" | "done";
-  dueDate: string | null;        // ISO string
-  deps: number[];                // ids of prerequisite steps
+  dueDate: string | null;
+  deps: number[];
   description?: string;
+  links?: StepLink[];
 };
 
 // Link shown in the Sources panel

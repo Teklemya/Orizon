@@ -1,7 +1,17 @@
-import { loadSchools } from "./kb";
+import { dbListSchools } from "./schoolsDB";
 
-export const listSchoolsHandler = (_req: any, res: any) => {
-  const schools = loadSchools();
-  // For now we send everything; you can map to fewer fields if you want.
-  res.json(schools);
+export async function listSchoolsHandler(
+  _req: any,
+  res: any
+) {
+  try {
+    const schools = await dbListSchools();
+    res.json(schools);
+  } catch (err: any) {
+    console.error("Error listing schools:", err);
+    res.status(500).json({
+      error: "Failed to load schools",
+      detail: err?.message,
+    });
+  }
 }

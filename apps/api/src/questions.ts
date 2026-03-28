@@ -1,12 +1,11 @@
-// apps/api/src/questions.ts
 import { Router } from "express";
 import { pool } from "./db";
 
 const router = Router();
 
-// ==========================
-// GET /api/questions
-// ==========================
+/* ==========================
+   GET /api/questions
+========================== */
 router.get("/", async (_req: any, res: any) => {
   try {
     const { rows } = await pool.query(`
@@ -16,7 +15,12 @@ router.get("/", async (_req: any, res: any) => {
         q.body,
         q.author,
         q.category,
-        COALESCE(json_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '[]') AS tags
+        q.author_id,
+        q.created_at,
+        COALESCE(
+          json_agg(t.name) FILTER (WHERE t.name IS NOT NULL),
+          '[]'
+        ) AS tags
       FROM questions q
       LEFT JOIN question_tags qt ON q.id = qt.question_id
       LEFT JOIN tags t ON qt.tag_id = t.id
@@ -31,26 +35,24 @@ router.get("/", async (_req: any, res: any) => {
   }
 });
 
-// ==========================
-// POST /api/questions
-// ==========================
+/* ==========================
+   POST /api/questions
+========================== */
 router.post("/", async (req: any, res: any) => {
   try {
-    const { title, body, author, tags, category } = req.body;
+    const { title, body, author, author_id, tags, category } = req.body;
 
-    // 1) Insert question (with category)
     const result = await pool.query(
       `
-      INSERT INTO questions (title, body, author, category)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id
+      INSERT INTO questions (title, body, author, author_id, category)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, created_at
       `,
-      [title, body, author, category || null]
+      [title, body, author, author_id || null, category || null]
     );
 
     const questionId = result.rows[0].id;
 
-    // 2) Insert tags (if any)
     if (tags && Array.isArray(tags)) {
       for (let rawTag of tags) {
         const tagName = rawTag.trim().toLowerCase();
@@ -78,10 +80,183 @@ router.post("/", async (req: any, res: any) => {
       }
     }
 
-    res.status(201).json({ success: true, id: questionId });
+    res.status(201).json({
+      success: true,
+      id: questionId,
+      created_at: result.rows[0].created_at,
+    });
   } catch (err) {
     console.error("POST /questions error:", err);
     res.status(500).json({ error: "Failed to create question" });
+  }
+});
+
+/* ==========================
+   PUT /api/questions/:id
+========================== */
+router.put("/:id", async (req: any, res: any) => {
+  const { id } = req.params;
+  const { title, body, category, author_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE questions
+      SET title = $1, body = $2, category = $3
+      WHERE id = $4
+        AND author_id = $5
+      `,
+      [title, body, category || null, id, author_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to edit this question" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("PUT /questions/:id error:", err);
+    res.status(500).json({ error: "Failed to update question" });
+  }
+});
+
+/* ==========================
+   DELETE /api/questions/:id
+========================== */
+router.delete("/:id", async (req: any, res: any) => {
+  const { id } = req.params;
+  const { author_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM questions
+      WHERE id = $1
+        AND author_id = $2
+      `,
+      [id, author_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to delete this question" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /questions/:id error:", err);
+    res.status(500).json({ error: "Failed to delete question" });
+  }
+});
+
+/* ==========================
+   GET /api/questions/:id/answers
+========================== */
+router.get("/:id/answers", async (req: any, res: any) => {
+  const { id } = req.params;
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT id, question_id, author, body, author_id, created_at
+      FROM answers
+      WHERE question_id = $1
+      ORDER BY created_at ASC
+      `,
+      [id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /questions/:id/answers error:", err);
+    res.status(500).json({ error: "Failed to fetch answers" });
+  }
+});
+
+/* ==========================
+   POST /api/questions/:id/answers
+========================== */
+router.post("/:id/answers", async (req: any, res: any) => {
+  const { id } = req.params;
+  const { author, body, author_id } = req.body;
+
+  try {
+    await pool.query(
+      `
+      INSERT INTO answers (question_id, author, body, author_id)
+      VALUES ($1, $2, $3, $4)
+      `,
+      [id, author, body, author_id]
+    );
+
+    res.status(201).json({ success: true });
+  } catch (err) {
+    console.error("POST /questions/:id/answers error:", err);
+    res.status(500).json({ error: "Failed to post answer" });
+  }
+});
+
+/* ==========================
+   PUT /api/questions/:questionId/answers/:answerId
+========================== */
+router.put("/:questionId/answers/:answerId", async (req: any, res: any) => {
+  const { answerId } = req.params;
+  const { body, author_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE answers
+      SET body = $1
+      WHERE id = $2
+        AND author_id = $3
+      `,
+      [body, answerId, author_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to edit this answer" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("PUT /answers error:", err);
+    res.status(500).json({ error: "Failed to update answer" });
+  }
+});
+
+/* ==========================
+   DELETE /api/questions/:questionId/answers/:answerId
+========================== */
+router.delete("/:questionId/answers/:answerId", async (req: any, res: any) => {
+  const { answerId } = req.params;
+  const { author_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM answers
+      WHERE id = $1
+        AND author_id = $2
+      `,
+      [answerId, author_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to delete this answer" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /answers error:", err);
+    res.status(500).json({ error: "Failed to delete answer" });
   }
 });
 

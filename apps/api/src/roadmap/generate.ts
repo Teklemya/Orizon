@@ -12,8 +12,8 @@ const client = new OpenAI({
 
 function isoFromYearMonth(targetYear: number, intakeMonth: string): string {
   const monthIndex = [
-    "january","february","march","april","may","june",
-    "july","august","september","october","november","december",
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
   ].findIndex((m) => m.startsWith(intakeMonth.toLowerCase()));
 
   const m = Math.max(0, monthIndex);
@@ -29,12 +29,18 @@ function addMonthsISO(iso: string, delta: number): string {
   return nd.toISOString();
 }
 
+type AiStepLink = {
+  label: string;
+  url: string;
+};
+
 type AiStep = {
   id: number;
   title: string;
   description: string;
   monthOffset: number;
   deps?: number[];
+  links?: AiStepLink[];
 };
 
 type WebSource = {
@@ -176,6 +182,42 @@ function stripInlineSources(text: string): string {
     .trim();
 }
 
+function isAllowedStepLink(url: string, allowedDomains: string[]): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return allowedDomains.some((domain) => {
+      const d = domain.toLowerCase();
+      return hostname === d || hostname.endsWith(`.${d}`);
+    });
+  } catch {
+    return false;
+  }
+}
+
+function normalizeStepLinks(
+  links: unknown,
+  allowedDomains: string[]
+): { label: string; url: string }[] {
+  if (!Array.isArray(links)) return [];
+
+  const seen = new Set<string>();
+
+  return links
+    .filter((link): link is { label?: unknown; url?: unknown } => Boolean(link))
+    .map((link) => ({
+      label: typeof link.label === "string" ? link.label.trim() : "",
+      url: typeof link.url === "string" ? link.url.trim() : "",
+    }))
+    .filter((link) => link.label.length > 0 && link.url.length > 0)
+    .filter((link) => isAllowedStepLink(link.url, allowedDomains))
+    .filter((link) => {
+      if (seen.has(link.url)) return false;
+      seen.add(link.url);
+      return true;
+    })
+    .slice(0, 3);
+}
+
 // ==========================
 // Main Generator
 // ==========================
@@ -210,11 +252,13 @@ export async function generateRoadmap(
   };
 
   const instructions = `
-Generate ONLY the application-phase roadmap (before visa stage).
+Generate ONLY the roadmap for applying to universities, before the visa stage.
 
 The student has NOT taken any exams yet.
 
 Always search official university websites for current information before writing the roadmap.
+
+Write for a student who knows little or nothing about U.S. college applications.
 
 Use this exact step flow:
 1. Check admission requirements and deadlines
@@ -250,16 +294,33 @@ Critical grounding rules:
 - Do NOT say a test or requirement is optional, waived, or not required unless an official source explicitly says so.
 - Do NOT say a test or requirement is required unless an official source explicitly says so.
 - If you cannot confirm a claim from an official university page or an official page linked by it, do not state it as fact.
-- If the source is ambiguous, use cautious wording such as "verify this requirement on the official site."
+- If the source is ambiguous, use cautious wording such as "check the official page to confirm this."
 - Distinguish carefully between:
   1. official requirements
   2. optional supplemental materials
   3. recommended preparation
   4. waived or exempted requirements
   5. research guidance / competitive benchmarks
-- Never convert optional supplemental evidence into a required item.
-- Never convert a required item into an optional item.
-- If a page says supplemental materials may strengthen the application but do not satisfy the requirement, preserve that distinction exactly.
+
+Writing style:
+- Write like a helpful advisor talking to a student.
+- Keep each description simple, clear, and easy to follow.
+- Explain terms naturally if they may be unfamiliar.
+- Do NOT dump raw lists with lots of colons or semicolons.
+- Do NOT include raw URLs, markdown links, citations, or source references in the descriptions.
+- Keep titles close to the exact step flow above.
+- Prefer cautious wording when certainty is limited.
+
+Links rules:
+- Each step may include 1 to 3 official links in a links array.
+- Each link object must include:
+    label (string)
+    url (string)
+- Include only official university pages or official pages directly linked by the university.
+- Include only links that directly support that specific step.
+- The label should match the page name naturally mentioned in the step description.
+- Do NOT put URLs inside the description.
+- Put URLs only inside the links field.
 
 Competitive benchmark rules:
 - You may include a competitive score suggestion only as research guidance, never as an official requirement.
@@ -267,18 +328,6 @@ Competitive benchmark rules:
 - Never phrase a competitive benchmark as mandatory.
 - Never use words like "required," "must," or "minimum" for a competitive benchmark unless the official source explicitly says so.
 - If no trustworthy competitive benchmark is available from the official source context, do not invent one.
-- Preferred wording for benchmarks is like:
-  - "If the university does not publish a competitive score target, research recent admitted-student score ranges before deciding what score to aim for."
-  - "A stronger English score may help your application, but this is not the same as an official minimum requirement."
-  - "Treat this as research guidance, not as a formal requirement."
-
-Writing style:
-- Write like a helpful advisor talking to a student.
-- Keep each description simple, clear, and easy to follow.
-- Do NOT dump raw lists with lots of colons or semicolons.
-- Do NOT include URLs, markdown links, citations, or source references in the descriptions.
-- Keep titles close to the exact step flow above.
-- Prefer cautious wording when certainty is limited.
 
 Output rules:
 - Return EXACTLY 8 steps.
@@ -288,6 +337,8 @@ Output rules:
     description (string)
     monthOffset (integer)
     deps (optional array of ids)
+- Each step may also include:
+    links (array of 1 to 3 objects with label and url)
 
 Use this monthOffset pattern:
 1 => -12
@@ -306,9 +357,19 @@ Return ONLY valid JSON in this format:
     {
       "id": 1,
       "title": "Check admission requirements and deadlines",
-      "description": "string",
+      "description": "Check the university's official admissions page and deadline page so you know what is required and when each item is due.",
       "monthOffset": -12,
-      "deps": []
+      "deps": [],
+      "links": [
+        {
+          "label": "UC International First-Year Admissions",
+          "url": "https://admissions.uc.edu/information/international.html"
+        },
+        {
+          "label": "UC Freshman Deadlines",
+          "url": "https://admissions.uc.edu/requirements/freshman.html"
+        }
+      ]
     }
   ]
 }
@@ -392,8 +453,8 @@ Return ONLY valid JSON in this format:
         id: 1,
         title: "Check admission requirements and deadlines",
         description: input.intendedMajor
-          ? `Review the official university requirements and check whether ${input.intendedMajor} has any extra program-specific requirements.`
-          : "Review the official university requirements, deadlines, English test rules, and required documents.",
+          ? `Go to each university's official admissions page and check what international students need to apply. Also see whether ${input.intendedMajor} has extra program requirements, such as specific courses, a portfolio, or other materials.`
+          : "Go to each university's official admissions page and check what international students need to apply, which documents are required, and when everything is due.",
         monthOffset: -12,
         deps: [],
       },
@@ -401,7 +462,7 @@ Return ONLY valid JSON in this format:
         id: 2,
         title: "Plan your English proficiency test",
         description:
-          "Choose an accepted English proficiency exam and confirm the current minimum score on the official university page before you register.",
+          "Find out which English exam the university accepts, such as TOEFL, IELTS, or Duolingo, and check the required score on the official site before you choose a test date.",
         monthOffset: -11,
         deps: [1],
       },
@@ -410,8 +471,8 @@ Return ONLY valid JSON in this format:
         title: "Plan any additional required tests",
         description:
           input.level === "Graduate"
-            ? "Check whether your program requires or recommends exams such as the GRE or GMAT."
-            : "Check whether the university uses the SAT or ACT in admissions and whether taking one is necessary or helpful.",
+            ? "Check whether your graduate program asks for exams like the GRE or GMAT. If the official site is not clear, note it and verify it before you spend time or money registering."
+            : "Check whether the university uses the SAT or ACT for your application. Some schools may not require them, so confirm the policy on the official site before planning for one.",
         monthOffset: -10,
         deps: [1],
       },
@@ -419,7 +480,7 @@ Return ONLY valid JSON in this format:
         id: 4,
         title: "Prepare transcripts and translations",
         description:
-          "Request your transcripts early and arrange certified English translations if your academic documents are not already in English.",
+          "Ask your current or previous school for your transcripts, which are your official grade records. If they are not in English, arrange certified translations early so you are not delayed later.",
         monthOffset: -9,
         deps: [1],
       },
@@ -428,8 +489,8 @@ Return ONLY valid JSON in this format:
         title: "Prepare your application materials",
         description:
           input.intendedMajor
-            ? `Prepare your essays, resume, recommendations, and any extra materials your ${input.intendedMajor} program may require.`
-            : "Prepare your essays, resume, recommendations, and any other materials required for the application.",
+            ? `Start preparing the rest of your application materials, such as essays, recommendation letters, a resume, and any extra items your ${input.intendedMajor} program may ask for.`
+            : "Start preparing the rest of your application materials, such as essays, recommendation letters, a resume, and any other documents the university asks for.",
         monthOffset: -8,
         deps: [4],
       },
@@ -437,7 +498,7 @@ Return ONLY valid JSON in this format:
         id: 6,
         title: "Submit your application before the deadline",
         description:
-          "Submit your application on time and make sure all documents, scores, and supporting materials are sent before the deadline.",
+          "Complete the application form and submit everything before the deadline. Make sure your documents, test scores, and other required items are sent the right way and on time.",
         monthOffset: -6,
         deps: [2, 3, 5],
       },
@@ -445,7 +506,7 @@ Return ONLY valid JSON in this format:
         id: 7,
         title: "Monitor your portal and respond to requests",
         description:
-          "After you apply, check your portal and email regularly in case the university asks for missing documents or follow-up items.",
+          "After you apply, keep checking your application portal, which is the university website where they track your application status, along with your email in case they ask for missing items.",
         monthOffset: -5,
         deps: [6],
       },
@@ -453,7 +514,7 @@ Return ONLY valid JSON in this format:
         id: 8,
         title: "Accept your offer and complete pre-enrollment items",
         description:
-          "If you are admitted, complete the next required steps on time, such as accepting your offer, paying any deposit, and finishing pre-enrollment tasks.",
+          "If you are admitted, follow the next steps the university gives you. This may include accepting the offer, paying a deposit to save your place, and completing setup tasks before classes begin.",
         monthOffset: -3,
         deps: [7],
       },
@@ -489,6 +550,7 @@ Return ONLY valid JSON in this format:
         status: "pending",
         deps,
         dueDate: addMonthsISO(anchor, monthOffset),
+        links: normalizeStepLinks(s.links, allowedDomains),
       };
     });
 

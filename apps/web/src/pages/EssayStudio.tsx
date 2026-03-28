@@ -64,6 +64,12 @@ export default function EssayStudio() {
 
   const draftSectionRef = useRef<HTMLDivElement | null>(null);
 
+  const softFieldClass =
+    "mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100";
+
+  const softButtonClass =
+    "inline-flex items-center rounded-xl px-4 py-2 border border-gray-200 bg-gray-50 text-sm text-gray-700 shadow-sm transition hover:bg-gray-100 hover:border-gray-300 disabled:opacity-50";
+
   const draftText = useMemo(() => htmlToPlainText(draftHtml), [draftHtml]);
   const wordCount = useMemo(() => {
     if (!draftText) return 0;
@@ -164,9 +170,7 @@ export default function EssayStudio() {
       setFeedback(data);
     } catch (err) {
       console.error(err);
-      setError(
-        err instanceof Error ? err.message : "Something went wrong."
-      );
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -200,7 +204,7 @@ export default function EssayStudio() {
           <label className="block">
             <span className="text-sm text-gray-600">Essay prompt or context</span>
             <input
-              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+              className={softFieldClass}
               value={context}
               onChange={(e) => handleContextChange(e.target.value)}
               placeholder="e.g. Common App personal statement for Information Technology"
@@ -367,7 +371,7 @@ export default function EssayStudio() {
               onChange={(e) =>
                 setPromptCategory(e.target.value as PracticePromptCategory)
               }
-              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm bg-white"
+              className={softFieldClass}
             >
               {CATEGORY_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -382,7 +386,7 @@ export default function EssayStudio() {
             <input
               value={intendedMajor}
               onChange={(e) => setIntendedMajor(e.target.value)}
-              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+              className={softFieldClass}
               placeholder="e.g. Information Technology"
             />
           </label>
@@ -393,7 +397,7 @@ export default function EssayStudio() {
             type="button"
             onClick={handleGeneratePrompts}
             disabled={promptLoading}
-            className="inline-flex items-center rounded-xl px-4 py-2 border bg-white text-sm hover:bg-black hover:text-white transition disabled:opacity-50"
+            className={softButtonClass}
           >
             {promptLoading ? "Generating..." : "Generate prompts"}
           </button>

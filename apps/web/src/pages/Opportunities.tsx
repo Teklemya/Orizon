@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase";
+import { useAuth } from "../lib/auth";
 
 type Opportunity = {
   id: number;
@@ -10,10 +11,12 @@ type Opportunity = {
   paid: boolean;
   deadline?: string; // ISO
   link?: string;
+  createdBy?: string | null;
   postedAt: string; // ISO
 };
 
 export default function OpportunitiesPage() {
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<Opportunity[]>([]);
 
   // Filters
@@ -40,14 +43,17 @@ export default function OpportunitiesPage() {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    fetch(`${API_BASE}/api/opportunities`)
-      .then(async (res) => {
+
+    async function loadOpportunities() {
+      setLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/opportunities`);
         if (!res.ok) throw new Error(`Status ${res.status}`);
-        return res.json();
-      })
-      .then((data: any[]) => {
+
+        const data: any[] = await res.json();
         if (!mounted) return;
+
         const norm: Opportunity[] = data.map((d) => ({
           id: d.id,
           title: d.title,
@@ -57,17 +63,22 @@ export default function OpportunitiesPage() {
           paid: !!d.paid,
           deadline: d.deadline || undefined,
           link: d.link || undefined,
+          createdBy: d.created_by ?? d.createdBy ?? null,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
         }));
+
         setItems(norm);
-        setLoading(false);
-      })
-      .catch((err) => {
+        setError(null);
+      } catch (err) {
         console.error("Failed to load opportunities:", err);
         if (!mounted) return;
         setError("Failed to load opportunities");
-        setLoading(false);
-      });
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void loadOpportunities();
 
     return () => {
       mounted = false;
@@ -98,9 +109,14 @@ export default function OpportunitiesPage() {
     });
   }, [items, query, typeFilter, locationFilter, paidFilter, deadlineFilter]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title || !form.type) return;
+    if (!user?.accessToken) {
+      setError("You must be signed in to post an opportunity");
+      return;
+    }
+
     const payload = {
       title: form.title!.trim(),
       description: form.description?.trim() || undefined,
@@ -111,47 +127,70 @@ export default function OpportunitiesPage() {
       link: form.link || undefined,
     };
 
-    fetch(`${API_BASE}/api/opportunities`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        return res.json();
-      })
-      .then((d) => {
-        const created: Opportunity = {
-          id: d.id,
-          title: d.title,
-          description: d.description,
-          type: d.type,
-          location: d.location,
-          paid: !!d.paid,
-          deadline: d.deadline || undefined,
-          link: d.link || undefined,
-          postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
-        };
-        setItems((s) => [created, ...s]);
-        setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
-        setShowForm(false);
-      })
-      .catch((err) => {
-        console.error("Failed to create opportunity:", err);
-        setError("Failed to create opportunity");
+    try {
+      setError(null);
+
+      const res = await fetch(`${API_BASE}/api/opportunities`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.accessToken}`,
+        },
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+
+      const d = await res.json();
+      const created: Opportunity = {
+        id: d.id,
+        title: d.title,
+        description: d.description,
+        type: d.type,
+        location: d.location,
+        paid: !!d.paid,
+        deadline: d.deadline || undefined,
+        link: d.link || undefined,
+        createdBy: d.created_by ?? d.createdBy ?? null,
+        postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+      };
+
+      setItems((s) => [created, ...s]);
+      setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Failed to create opportunity:", err);
+      setError("Failed to create opportunity");
+    }
   }
 
-  function removeItem(id: number) {
-    fetch(`${API_BASE}/api/opportunities/${id}`, { method: "DELETE" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        setItems((s) => s.filter((x) => x.id !== id));
-      })
-      .catch((err) => {
-        console.error("Failed to delete opportunity:", err);
-        setError("Failed to delete opportunity");
+  function canRemoveOpportunity(opportunity: Opportunity) {
+    if (!user) return false;
+    return user.isAdmin || (!!opportunity.createdBy && opportunity.createdBy === user.id);
+  }
+
+  async function removeItem(id: number) {
+    if (!user?.accessToken) {
+      setError("You must be signed in to remove an opportunity");
+      return;
+    }
+
+    try {
+      setError(null);
+
+      const res = await fetch(`${API_BASE}/api/opportunities/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${user.accessToken}`,
+        },
       });
+
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      setItems((s) => s.filter((x) => x.id !== id));
+    } catch (err) {
+      console.error("Failed to delete opportunity:", err);
+      setError("Failed to delete opportunity");
+    }
   }
 
   return (
@@ -228,7 +267,9 @@ export default function OpportunitiesPage() {
                     <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
-                    <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    {!authLoading && canRemoveOpportunity(it) && (
+                      <button type="button" onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    )}
                   </div>
                 </div>
               </div>

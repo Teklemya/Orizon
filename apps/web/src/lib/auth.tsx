@@ -29,7 +29,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { supabase } from "./supabase";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
 /**
  * User type - matches our profiles table
@@ -38,6 +38,8 @@ type User = {
   id: string;
   email: string;
   displayName?: string;
+  accessToken: string;
+  isAdmin: boolean;
 };
 
 type AuthContextValue = {
@@ -108,39 +110,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /**
-   * Maps Supabase user to our User type
-   */
-  const mapSupabaseUser = (supabaseUser: SupabaseUser | null): User | null => {
-    if (!supabaseUser) return null;
+  function isAdminValue(value: unknown): boolean {
+    if (value === true) return true;
+    if (typeof value === "string") return value.toLowerCase() === "admin";
+    if (Array.isArray(value)) return value.some((item) => isAdminValue(item));
+    return false;
+  }
+
+  function hasAdminRole(supabaseUser: SupabaseUser): boolean {
+    const appMetadata = supabaseUser.app_metadata as Record<string, unknown> | undefined;
+    const userMetadata = supabaseUser.user_metadata as Record<string, unknown> | undefined;
+
+    return [
+      appMetadata?.role,
+      appMetadata?.roles,
+      appMetadata?.is_admin,
+      appMetadata?.isAdmin,
+      userMetadata?.role,
+      userMetadata?.roles,
+      userMetadata?.is_admin,
+      userMetadata?.isAdmin,
+    ].some((value) => isAdminValue(value));
+  }
+
+  async function getProfileRole(userId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) return null;
+
+    const role = (data as { role?: unknown } | null)?.role;
+    return typeof role === "string" ? role : null;
+  }
+
+  async function mapSessionUser(session: Session | null): Promise<User | null> {
+    const supabaseUser = session?.user ?? null;
+    if (!supabaseUser || !session?.access_token) return null;
+
+    const profileRole = await getProfileRole(supabaseUser.id);
+
     return {
       id: supabaseUser.id,
       email: supabaseUser.email || "",
       displayName: supabaseUser.user_metadata?.display_name,
+      accessToken: session.access_token,
+      isAdmin:
+        hasAdminRole(supabaseUser) ||
+        profileRole?.toLowerCase() === "admin",
     };
-  };
+  }
 
   /**
    * On mount: Check for existing session
    * This runs once when the app loads
    */
   useEffect(() => {
+    let mounted = true;
+
+    async function syncUser(session: Session | null) {
+      const nextUser = await mapSessionUser(session);
+      if (!mounted) return;
+      setUser(nextUser);
+      setLoading(false);
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(mapSupabaseUser(session?.user ?? null));
-      setLoading(false);
+      void syncUser(session);
     });
 
     // Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapSupabaseUser(session?.user ?? null));
-      setLoading(false);
+      void syncUser(session);
     });
 
     // Cleanup listener on unmount
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -171,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // If confirmation is not required, session exists and user is signed in.
     if (data.session?.user) {
-      setUser(mapSupabaseUser(data.session.user));
+      setUser(await mapSessionUser(data.session));
       setLoading(false);
     }
 
@@ -195,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Set user immediately to avoid route-guard race conditions on navigation.
-    setUser(mapSupabaseUser(data.user ?? null));
+    setUser(await mapSessionUser(data.session ?? null));
     setLoading(false);
 
     return {};

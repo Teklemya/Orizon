@@ -5,6 +5,7 @@ interface UserProfile {
   name: string;
   email: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 const ProfilePage: React.FC = () => {
@@ -76,6 +77,16 @@ const ProfilePage: React.FC = () => {
               <div className="flex justify-between">
                 <span>Email</span>
                 <span>{profile.email}</span>
+              </div>
+
+          <div className="flex justify-between">
+                <span>Created at</span>
+                <span>{profile.createdAt}</span>
+              </div>
+
+          <div className="flex justify-between">
+                <span>Updated at</span>
+                <span>{profile.updatedAt}</span>
               </div>
             </div>
           </div>

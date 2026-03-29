@@ -10,12 +10,17 @@ import type { GenInput } from "./types";
 import { listSchoolsHandler } from "./schools";
 import { getEssayFeedback } from "./essay/feedback";
 
+
 // 👇 NEW: Community Q&A route
 import questionsRouter from "./questions";
 // Opportunities route
 import opportunitiesRouter from "./opportunities";
 
 const app = express();
+
+app.use(express.json());
+import profileRouter from "./routes/profile";
+app.use("/api", profileRouter);
 
 const allowedOrigins = (
   process.env.CORS_ALLOWED_ORIGINS ||

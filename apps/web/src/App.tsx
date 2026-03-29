@@ -81,7 +81,7 @@ export default function App() {
           path="/Account"
           element={
             <ProtectedRoute>
-              <Opportunities />
+              <Account/>
             </ProtectedRoute>
           }
         />

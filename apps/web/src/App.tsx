@@ -23,6 +23,7 @@ import EssayStudio from "./pages/EssayStudio";
 import CommunityQA from "./pages/CommunityQA";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
+import Account from "./pages/Account";
 
 export default function App() {
   return (
@@ -73,6 +74,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CommunityQA />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/Account"
+          element={
+            <ProtectedRoute>
+              <Opportunities />
             </ProtectedRoute>
           }
         />

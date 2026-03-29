@@ -64,10 +64,10 @@ export default function App() {
           }
         />
         <Route
-          path="/Account"
+          path="/account"
           element={
             <ProtectedRoute>
-              <Account/>
+              <Account />
             </ProtectedRoute>
           }
         />

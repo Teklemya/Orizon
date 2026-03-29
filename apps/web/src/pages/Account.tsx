@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+
 import { useAuth } from "../lib/auth";
 import { API_BASE } from "../lib/apiBase";
 
@@ -11,134 +13,186 @@ interface UserProfile {
   updatedAt?: string;
 }
 
-const ProfilePage: React.FC = () => {
+function createFallbackProfile(user: {
+  id: string;
+  email: string;
+  displayName?: string;
+}): UserProfile {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+  };
+}
+
+function formatDate(value?: string) {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+}
+
+export default function Account() {
   const { user, loading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || loading) return;
+    if (loading) {
+      return;
+    }
+
+    if (!user) {
+      setProfile(null);
+      setFetchError(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    const currentUser = user;
+    const controller = new AbortController();
 
     async function fetchProfile() {
+      setProfileLoading(true);
+      setFetchError(null);
+
       try {
-        const res = await fetch(`${API_BASE}/api/profile/${user?.id}`, {
+        const response = await fetch(`${API_BASE}/api/profile/${currentUser.id}`, {
           credentials: "include",
+          signal: controller.signal,
         });
-        if (res.ok) {
-          const data = await res.json();
+
+        if (response.ok) {
+          const data = (await response.json()) as UserProfile;
           setProfile(data);
-        } else {
-          setFetchError("Failed to load profile");
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-        setFetchError("Error loading profile");
+
+        setProfile(createFallbackProfile(currentUser));
+
+        if (response.status === 404) {
+          setFetchError(
+            "Your account exists, but the database profile record is missing. Showing basic account info for now."
+          );
+          return;
+        }
+
+        setFetchError("Unable to load saved profile details right now.");
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error("Error fetching profile:", error);
+        setProfile(createFallbackProfile(currentUser));
+        setFetchError("Unable to reach the profile service. Showing basic account info.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setProfileLoading(false);
+        }
       }
     }
 
-    fetchProfile();
+    void fetchProfile();
+
+    return () => {
+      controller.abort();
+    };
   }, [user, loading]);
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-gray-500 animate-pulse">Loading...</p>
+      <div className="rounded-3xl border border-gray-200 bg-white px-6 py-20 text-center shadow-sm">
+        <p className="text-gray-500 animate-pulse">Loading profile...</p>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-gray-500">Please sign in to view your profile</p>
+      <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-20 text-center">
+        <h1 className="text-2xl font-semibold text-gray-900">Account</h1>
+        <p className="mt-3 text-gray-500">Please sign in to view your profile.</p>
       </div>
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <p className="text-gray-500 animate-pulse">Loading profile...</p>
-          {fetchError && <p className="text-red-500 mt-2">{fetchError}</p>}
-        </div>
-      </div>
-    );
-  }
+  const resolvedProfile = profile ?? createFallbackProfile(user);
+  const displayName =
+    resolvedProfile.displayName || resolvedProfile.email.split("@")[0];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-
-        {/* Header */}
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">
-          My Profile
-        </h1>
-
-        {/* Profile Card */}
-        <div className="bg-white shadow-md rounded-2xl p-8 flex flex-col md:flex-row items-center gap-8">
-
-          {/* User Info */}
-          <div className="flex-1 space-y-4 text-center md:text-left">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              {profile.displayName || profile.email.split("@")[0]}
-            </h2>
-
-            <p className="text-gray-600">{profile.email}</p>
-
-
-            {profile.createdAt && (
-              <p className="text-sm text-gray-400">
-                Joined {new Date(profile.createdAt).toLocaleDateString()}
-              </p>
-            )}
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-gray-400">
+          Account
+        </p>
+        <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900">{displayName}</h1>
+            <p className="mt-2 text-gray-600">{resolvedProfile.email}</p>
+            <p className="mt-3 text-sm text-gray-400">
+              {resolvedProfile.createdAt
+                ? `Joined ${formatDate(resolvedProfile.createdAt)}`
+                : "Profile details are still syncing."}
+            </p>
           </div>
         </div>
+      </section>
 
-        {/* Account Details Section */}
-        <div className="mt-8 grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-700 mb-4">
-              Account Information
-            </h3>
+      {fetchError ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {fetchError}
+        </section>
+      ) : null}
 
-            <div className="space-y-3 text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>User ID</span>
-                <span className="text-xs font-mono">{profile.id.substring(0, 12)}...</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Email</span>
-                <span>{profile.email}</span>
-              </div>
-
-          <div className="flex justify-between">
-                <span>Created at</span>
-                <span>{profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "N/A"}</span>
-              </div>
-
-          <div className="flex justify-between">
-                <span>Updated at</span>
-                <span>{profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : "N/A"}</span>
-              </div>
+      <section className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Account Information
+          </h2>
+          <div className="mt-5 space-y-4 text-sm text-gray-600">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-500">User ID</span>
+              <span className="font-mono text-xs text-gray-800">
+                {resolvedProfile.id.slice(0, 12)}...
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-500">Email</span>
+              <span className="text-right text-gray-800">
+                {resolvedProfile.email}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-500">Created</span>
+              <span className="text-gray-800">
+                {formatDate(resolvedProfile.createdAt)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-gray-500">Updated</span>
+              <span className="text-gray-800">
+                {formatDate(resolvedProfile.updatedAt)}
+              </span>
             </div>
           </div>
-
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-700 mb-4">
-              Security
-            </h3>
-
-            <button className="w-full bg-blue-600 hover:bg-blue-700 transition text-white py-2 rounded-lg font-medium">
-              Change Password
-            </button>
-          </div>
         </div>
 
-      </div>
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">Security</h2>
+          <p className="mt-3 text-sm text-gray-600">
+            Password changes and recovery are managed through your Supabase
+            authentication flow.
+          </p>
+          <Link
+            to="/reset-password"
+            className="mt-5 inline-flex rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Reset Password
+          </Link>
+        </div>
+      </section>
     </div>
   );
-};
-
-export default ProfilePage;
+}

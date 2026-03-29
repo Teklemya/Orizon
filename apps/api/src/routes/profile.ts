@@ -4,7 +4,7 @@ import { pool } from "../db";
 const router = Router();
 
 // Get profile for a specific user (identified by user ID from frontend)
-router.get("/profile/:userId", async (req, res) => {
+router.get("/profile/:userId", async (req: any, resaaaaa; any) => {
   try {
     const userId = req.params.userId;
     

@@ -28,7 +28,29 @@ export default function RoadmapBuilder({
 
   const [loading, setLoading] = useState(false);
   const [loadingSchools, setLoadingSchools] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [err, setErr] = useState<string | null>(null);
+
+  const loadingMessages = [
+    "Analyzing your profile...",
+    "Retrieving university requirements...",
+    "Building your personalized roadmap...",
+    "Finalizing your roadmap...",
+  ];
+
+  useEffect(() => {
+    if (!loading) return;
+
+    setLoadingStep(0);
+
+    const interval = setInterval(() => {
+      setLoadingStep((prev) =>
+      prev < loadingMessages.length - 1 ? prev + 1 : prev
+      );
+    }, 10800);
+
+    return () => clearInterval(interval);
+    }, [loading]);
 
   // ---- load schools from backend once ----
   useEffect(() => {
@@ -84,7 +106,7 @@ export default function RoadmapBuilder({
       // Build payload and only include intendedMajor if provided
       const payload: any = {
         profileId: "demo",
-        country,           // home country
+        country, // home country
         destinationCountry: "United States", // purely informational if you want
         level,
         intakeMonth,
@@ -119,13 +141,19 @@ export default function RoadmapBuilder({
 
   return (
     <div className="bg-white rounded-2xl shadow p-6">
-      <h3 className="text-xl font-semibold mb-4">AI Roadmap Generator</h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-xl font-semibold">Roadmap Generator</h3>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-black text-white/90">
+          AI Powered
+        </span>
+      </div>
 
       <form onSubmit={handleSubmit} className="grid sm:grid-cols-2 gap-4">
         <label className="block">
           <span className="text-sm text-gray-600">Home country</span>
           <input
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            disabled={loading}
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
           />
@@ -134,7 +162,8 @@ export default function RoadmapBuilder({
         <label className="block">
           <span className="text-sm text-gray-600">Level</span>
           <select
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            disabled={loading}
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
             value={level}
             onChange={(e) => setLevel(e.target.value as Level)}
           >
@@ -146,7 +175,8 @@ export default function RoadmapBuilder({
         <label className="block">
           <span className="text-sm text-gray-600">Intake month</span>
           <select
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            disabled={loading}
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
             value={intakeMonth}
             onChange={(e) => setIntakeMonth(e.target.value)}
           >
@@ -159,28 +189,28 @@ export default function RoadmapBuilder({
         <label className="block">
           <span className="text-sm text-gray-600">Target year</span>
           <input
+            disabled={loading}
             type="number"
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
             value={targetYear}
             onChange={(e) => setTargetYear(Number(e.target.value))}
           />
         </label>
 
-        {/* NEW: intended major (optional) */}
         <label className="sm:col-span-2 block">
           <span className="text-sm text-gray-600">
             Intended major{" "}
             <span className="text-xs text-gray-400">(optional)</span>
           </span>
           <input
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            disabled={loading}
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
             placeholder="e.g. Computer Science, Business, Mechanical Engineering"
             value={intendedMajor}
             onChange={(e) => setIntendedMajor(e.target.value)}
           />
         </label>
 
-        {/* University dropdown */}
         <label className="sm:col-span-2 block">
           <span className="text-sm text-gray-600">University (USA)</span>
           {loadingSchools ? (
@@ -189,7 +219,8 @@ export default function RoadmapBuilder({
             </p>
           ) : (
             <select
-              className="mt-1 w-full rounded-lg border px-3 py-2"
+              disabled={loading}
+              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500"
               value={selectedSchoolId}
               onChange={(e) => setSelectedSchoolId(e.target.value)}
             >
@@ -217,8 +248,28 @@ export default function RoadmapBuilder({
             disabled={loading || loadingSchools}
             className="inline-flex items-center rounded-xl px-4 py-2 bg-black text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {loading ? "Generating…" : "Generate Roadmap"}
+            {loading ? "Generating roadmap..." : "Generate Roadmap"}
           </button>
+
+          {loading && (
+            <div className="mt-3 rounded-xl border bg-gray-50 px-3 py-3">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-black animate-pulse" />
+                <p className="text-sm text-gray-700">
+                  {loadingMessages[loadingStep]}
+                </p>
+              </div>
+
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-black transition-all duration-500"
+                  style={{
+                    width: `${((loadingStep + 1) / loadingMessages.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </div>

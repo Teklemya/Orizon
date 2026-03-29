@@ -1,22 +1,7 @@
-/**
- * App Router with Protected Routes
- * 
- * CHANGES:
- * - Wrapped authenticated routes with <ProtectedRoute>
- * - Login page is public (no protection)
- * - All other pages require authentication
- * 
- * Protected routes:
- * - / (Dashboard)
- * - /explore (Dashboard)
- * - /essay-studio
- * - /community
- */
-
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
-
+import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/Dashboard";
 import Opportunities from "./pages/Opportunities";
 import EssayStudio from "./pages/EssayStudio";
@@ -28,15 +13,16 @@ import Account from "./pages/Account";
 export default function App() {
   return (
     <Routes>
+      {/* Public marketing homepage — has its own layout */}
+      <Route path="/" element={<HomePage />} />
+
+      {/* App routes — wrapped in the internal Layout */}
       <Route element={<Layout />}>
-        {/* Public routes */}
+        {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-        {/* Protected routes - require authentication */}
+        {/* Protected routes — require authentication */}
         <Route
           path="/dashboard"
           element={
@@ -86,10 +72,9 @@ export default function App() {
           }
         />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Fallback for unknown app routes → back to homepage */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );
 }
-

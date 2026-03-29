@@ -34,11 +34,7 @@ export default function Layout() {
           <div className="flex h-14 items-center justify-between">
             {/* Brand */}
             <div className="flex items-center gap-3">
-              <Logo />
               <span className="font-semibold tracking-tight">Orizon</span>
-              <span className="hidden md:inline text-xs px-2 py-0.5 rounded-full bg-black text-white/90">
-                MVP
-              </span>
             </div>
 
             {/* Desktop Nav */}
@@ -238,15 +234,3 @@ function MobileLink({
   );
 }
 
-function Logo() {
-  return (
-    <svg
-      className="h-5 w-5 text-black"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M12 2a1 1 0 0 1 .9.55l2.2 4.4 4.9.7a1 1 0 0 1 .55 1.7l-3.55 3.46.84 4.88a1 1 0 0 1-1.45 1.05L12 17.77l-4.39 2.32a1 1 0 0 1-1.45-1.05l.84-4.88L3.45 9.35A1 1 0 0 1 4 7.65l4.9-.7 2.2-4.4A1 1 0 0 1 12 2z" />
-    </svg>
-  );
-}

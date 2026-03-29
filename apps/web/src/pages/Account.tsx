@@ -13,6 +13,11 @@ interface UserProfile {
   updatedAt?: string;
 }
 
+type ProfileErrorResponse = {
+  error?: string;
+  detail?: string;
+};
+
 function createFallbackProfile(user: {
   id: string;
   email: string;
@@ -59,6 +64,7 @@ export default function Account() {
       try {
         const response = await fetch(`${API_BASE}/api/profile/${currentUser.id}`, {
           credentials: "include",
+          cache: "no-store",
           signal: controller.signal,
         });
 
@@ -70,14 +76,26 @@ export default function Account() {
 
         setProfile(createFallbackProfile(currentUser));
 
+        let errorPayload: ProfileErrorResponse | null = null;
+        try {
+          errorPayload = (await response.json()) as ProfileErrorResponse;
+        } catch {
+          errorPayload = null;
+        }
+
         if (response.status === 404) {
           setFetchError(
-            "Your account exists, but the database profile record is missing. Showing basic account info for now."
+            errorPayload?.detail ||
+              "Your account exists, but the database profile record is missing. Showing basic account info for now."
           );
           return;
         }
 
-        setFetchError("Unable to load saved profile details right now.");
+        setFetchError(
+          errorPayload?.detail ||
+            errorPayload?.error ||
+            "Unable to load saved profile details right now."
+        );
       } catch (error) {
         if (controller.signal.aborted) {
           return;

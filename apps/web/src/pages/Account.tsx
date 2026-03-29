@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../lib/auth";
 import { API_BASE } from "../lib/apiBase";
+import { supabase } from "../lib/supabase";
 
 interface UserProfile {
   id: string;
@@ -16,6 +17,15 @@ interface UserProfile {
 type ProfileErrorResponse = {
   error?: string;
   detail?: string;
+};
+
+type ProfileRecord = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 function createFallbackProfile(user: {
@@ -34,6 +44,17 @@ function formatDate(value?: string) {
   if (!value) return "N/A";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+}
+
+function mapProfileRecord(record: ProfileRecord): UserProfile {
+  return {
+    id: record.id,
+    email: record.email,
+    displayName: record.display_name ?? undefined,
+    avatarUrl: record.avatar_url ?? undefined,
+    createdAt: record.created_at ?? undefined,
+    updatedAt: record.updated_at ?? undefined,
+  };
 }
 
 export default function Account() {
@@ -57,6 +78,20 @@ export default function Account() {
     const currentUser = user;
     const controller = new AbortController();
 
+    async function fetchProfileFromSupabase() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, display_name, avatar_url, created_at, updated_at")
+        .eq("id", currentUser.id)
+        .maybeSingle<ProfileRecord>();
+
+      if (error) {
+        throw error;
+      }
+
+      return data ? mapProfileRecord(data) : null;
+    }
+
     async function fetchProfile() {
       setProfileLoading(true);
       setFetchError(null);
@@ -74,14 +109,20 @@ export default function Account() {
           return;
         }
 
-        setProfile(createFallbackProfile(currentUser));
-
         let errorPayload: ProfileErrorResponse | null = null;
         try {
           errorPayload = (await response.json()) as ProfileErrorResponse;
         } catch {
           errorPayload = null;
         }
+
+        const fallbackProfile = await fetchProfileFromSupabase();
+        if (fallbackProfile) {
+          setProfile(fallbackProfile);
+          return;
+        }
+
+        setProfile(createFallbackProfile(currentUser));
 
         if (response.status === 404) {
           setFetchError(
@@ -99,6 +140,16 @@ export default function Account() {
       } catch (error) {
         if (controller.signal.aborted) {
           return;
+        }
+
+        try {
+          const fallbackProfile = await fetchProfileFromSupabase();
+          if (fallbackProfile) {
+            setProfile(fallbackProfile);
+            return;
+          }
+        } catch (supabaseError) {
+          console.error("Error fetching profile from Supabase:", supabaseError);
         }
 
         console.error("Error fetching profile:", error);
@@ -170,12 +221,6 @@ export default function Account() {
             Account Information
           </h2>
           <div className="mt-5 space-y-4 text-sm text-gray-600">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-gray-500">User ID</span>
-              <span className="font-mono text-xs text-gray-800">
-                {resolvedProfile.id.slice(0, 12)}...
-              </span>
-            </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-gray-500">Email</span>
               <span className="text-right text-gray-800">

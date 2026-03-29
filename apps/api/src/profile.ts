@@ -1,5 +1,4 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
 
 import { pool } from "./db";
 
@@ -114,7 +113,7 @@ async function createProfileFromAuthUser(
 
 router.get(
   "/profile/:userId",
-  async (req: Request<{ userId: string }>, res: Response) => {
+  async (req: any, res: any) => {
     const userId = req.params.userId?.trim();
 
     if (!userId) {

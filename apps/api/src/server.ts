@@ -11,6 +11,8 @@ import type { GenInput } from "./types";
 import { listSchoolsHandler } from "./schools";
 import { getEssayFeedback } from "./essay/feedback";
 import { generatePracticePrompts } from "./essay/practicePrompts";
+import profileRouter from "./profile";
+
 
 // 👇 NEW: Community Q&A route
 import questionsRouter from "./questions";
@@ -55,6 +57,7 @@ app.options("*", cors(corsOptions), (_req: any, res: any) =>
   res.sendStatus(204)
 );
 app.use(express.json());
+app.use("/api", profileRouter);
 
 // ====== AI ROADMAP ENDPOINT ======
 const GenSchema = z.object({

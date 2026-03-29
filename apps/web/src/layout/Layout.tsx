@@ -22,6 +22,8 @@ export default function Layout() {
       ? "Student questions"
       : pathname === "/opportunities"
       ? "Opportunities"
+      : pathname === "/account"
+      ? "Account"
       : "Welcome";
 
   return (
@@ -83,6 +85,18 @@ export default function Layout() {
                 }
               >
                 Opportunities
+              </NavLink>
+
+              <NavLink
+                to="/account"
+                className={({ isActive }) =>
+                  cx(
+                    "px-3 py-2 rounded-xl text-sm font-medium transition",
+                    isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-100"
+                  )
+                }
+              >
+                Account
               </NavLink>
             </nav>
 
@@ -146,6 +160,9 @@ export default function Layout() {
                 </MobileLink>
                 <MobileLink to="/opportunities" onClick={() => setOpen(false)}>
                   Opportunities
+                </MobileLink>
+                <MobileLink to="/account" onClick={() => setOpen(false)}>
+                  Account
                 </MobileLink>
 
                 {!user ? (

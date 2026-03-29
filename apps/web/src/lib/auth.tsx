@@ -99,6 +99,24 @@ const authRedirectBase =
     ? runtimeOrigin
     : normalizedConfiguredRedirectBase || window.location.origin;
 
+function getUserDisplayName(supabaseUser: SupabaseUser): string | undefined {
+  const metadata = supabaseUser.user_metadata;
+  const candidates = [
+    metadata?.display_name,
+    metadata?.full_name,
+    metadata?.name,
+    metadata?.preferred_username,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return undefined;
+}
+
 function buildRedirectUrl(path = ""): string {
   if (!path) return authRedirectBase;
   return `${authRedirectBase}${path.startsWith("/") ? path : `/${path}`}`;
@@ -116,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       id: supabaseUser.id,
       email: supabaseUser.email || "",
-      displayName: supabaseUser.user_metadata?.display_name,
+      displayName: getUserDisplayName(supabaseUser),
     };
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../lib/auth";
 import { API_BASE } from "../lib/apiBase";
 
 type Opportunity = {
@@ -11,9 +12,11 @@ type Opportunity = {
   deadline?: string; // ISO
   link?: string;
   postedAt: string; // ISO
+  createdBy?: string;
 };
 
 export default function OpportunitiesPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Opportunity[]>([]);
 
   // Filters
@@ -58,6 +61,7 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+          createdBy: d.created_by || d.createdBy || undefined,
         }));
         setItems(norm);
         setLoading(false);
@@ -100,7 +104,13 @@ export default function OpportunitiesPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) {
+      setError("Please sign in to post an opportunity");
+      return;
+    }
     if (!form.title || !form.type) return;
+
+    setError(null);
     const payload = {
       title: form.title!.trim(),
       description: form.description?.trim() || undefined,
@@ -109,6 +119,7 @@ export default function OpportunitiesPage() {
       paid: !!form.paid,
       deadline: form.deadline || undefined,
       link: form.link || undefined,
+      created_by: user.id,
     };
 
     fetch(`${API_BASE}/api/opportunities`, {
@@ -131,6 +142,7 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+          createdBy: d.created_by || d.createdBy || undefined,
         };
         setItems((s) => [created, ...s]);
         setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
@@ -143,7 +155,17 @@ export default function OpportunitiesPage() {
   }
 
   function removeItem(id: number) {
-    fetch(`${API_BASE}/api/opportunities/${id}`, { method: "DELETE" })
+    if (!user?.id) {
+      setError("Please sign in to remove your opportunity");
+      return;
+    }
+
+    setError(null);
+    fetch(`${API_BASE}/api/opportunities/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ created_by: user.id }),
+    })
       .then((res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         setItems((s) => s.filter((x) => x.id !== id));
@@ -228,7 +250,9 @@ export default function OpportunitiesPage() {
                     <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
-                    <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    {user?.id === it.createdBy && (
+                      <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    )}
                   </div>
                 </div>
               </div>

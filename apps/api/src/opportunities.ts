@@ -4,6 +4,13 @@ import { z } from "zod";
 
 const router = Router();
 
+function normalizeUserId(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 const CreateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
@@ -34,6 +41,11 @@ router.post("/", async (req: any, res: any) => {
   if (!parsed.success) return res.status(400).json(parsed.error);
 
   const { title, description, type, location, paid, deadline, link, created_by } = parsed.data;
+  const normalizedCreatedBy = normalizeUserId(created_by);
+
+  if (!normalizedCreatedBy) {
+    return res.status(400).json({ error: "created_by required" });
+  }
 
   try {
     const result = await pool.query(
@@ -48,7 +60,7 @@ router.post("/", async (req: any, res: any) => {
         paid || false,
         deadline || null,
         link || null,
-        created_by,
+        normalizedCreatedBy,
       ]
     );
 
@@ -62,7 +74,7 @@ router.post("/", async (req: any, res: any) => {
 // DELETE /api/opportunities/:id
 router.delete("/:id", async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
-  const requesterId = req.body?.requester_id ?? req.body?.created_by;
+  const requesterId = normalizeUserId(req.body?.requester_id ?? req.body?.created_by);
 
   if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
   if (!requesterId) {

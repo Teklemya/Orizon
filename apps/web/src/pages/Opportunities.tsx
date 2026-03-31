@@ -16,6 +16,13 @@ type Opportunity = {
   createdBy?: string;
 };
 
+function normalizeUserId(value?: string | null) {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 export default function OpportunitiesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -42,11 +49,13 @@ export default function OpportunitiesPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentUserId = normalizeUserId(user?.id);
+  const isAdmin = userRole === "admin";
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetch(`${API_BASE}/api/opportunities`)
+    fetch(`${API_BASE}/api/opportunities`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
@@ -63,7 +72,10 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
-          createdBy: d.created_by || d.createdBy || undefined,
+          createdBy:
+            normalizeUserId(d.created_by) ??
+            normalizeUserId(d.createdBy) ??
+            undefined,
         }));
         setItems(norm);
         setLoading(false);
@@ -198,7 +210,11 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
-          createdBy: d.created_by || d.createdBy || undefined,
+          createdBy:
+            normalizeUserId(d.created_by) ??
+            normalizeUserId(d.createdBy) ??
+            currentUserId ??
+            undefined,
         };
         setItems((s) => [created, ...s]);
         setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
@@ -324,7 +340,7 @@ export default function OpportunitiesPage() {
                     <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
-                    {(user?.id === it.createdBy || userRole === "admin") && (
+                    {(isAdmin || normalizeUserId(it.createdBy) === currentUserId) && (
                       <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
                     )}
                   </div>

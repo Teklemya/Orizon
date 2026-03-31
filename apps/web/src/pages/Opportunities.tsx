@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/auth";
 import { API_BASE } from "../lib/apiBase";
+import { supabase } from "../lib/supabase";
 
 type Opportunity = {
   id: number;
@@ -18,6 +19,7 @@ type Opportunity = {
 export default function OpportunitiesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<Opportunity[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Filters
   const [query, setQuery] = useState("");
@@ -77,6 +79,60 @@ export default function OpportunitiesPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const userId = user?.id;
+
+    if (!userId) {
+      setUserRole(null);
+      return;
+    }
+
+    let mounted = true;
+
+    async function loadUserRole() {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .maybeSingle<{ role: string | null }>();
+
+        if (error) {
+          throw error;
+        }
+
+        if (mounted && typeof data?.role === "string") {
+          setUserRole(data.role.toLowerCase());
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to load profile role from Supabase:", err);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/profile/${userId}`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+
+        const data = await res.json();
+        if (!mounted) return;
+
+        setUserRole(
+          typeof data.role === "string" ? data.role.toLowerCase() : null
+        );
+      } catch (err) {
+        console.error("Failed to load profile role from API:", err);
+        if (!mounted) return;
+        setUserRole(null);
+      }
+    }
+
+    void loadUserRole();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -164,15 +220,33 @@ export default function OpportunitiesPage() {
     fetch(`${API_BASE}/api/opportunities/${id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ created_by: user.id }),
+      body: JSON.stringify({ requester_id: user.id }),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Status ${res.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          let message = `Status ${res.status}`;
+
+          try {
+            const data = await res.json();
+            if (typeof data?.error === "string" && data.error.trim()) {
+              message = data.error;
+            }
+          } catch {
+            // Ignore JSON parsing issues and keep the status-based message.
+          }
+
+          throw new Error(message);
+        }
+
         setItems((s) => s.filter((x) => x.id !== id));
       })
       .catch((err) => {
         console.error("Failed to delete opportunity:", err);
-        setError("Failed to delete opportunity");
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Failed to delete opportunity"
+        );
       });
   }
 
@@ -250,7 +324,7 @@ export default function OpportunitiesPage() {
                     <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
-                    {user?.id === it.createdBy && (
+                    {(user?.id === it.createdBy || userRole === "admin") && (
                       <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
                     )}
                   </div>

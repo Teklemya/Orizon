@@ -62,22 +62,45 @@ router.post("/", async (req: any, res: any) => {
 // DELETE /api/opportunities/:id
 router.delete("/:id", async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
-  const createdBy = req.body?.created_by;
+  const requesterId = req.body?.requester_id ?? req.body?.created_by;
 
   if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
-  if (!createdBy) {
-    return res.status(400).json({ error: "created_by required" });
+  if (!requesterId) {
+    return res.status(400).json({ error: "requester_id required" });
   }
 
   try {
-    const result = await pool.query(
+    const ownerDeleteResult = await pool.query(
       `DELETE FROM opportunities WHERE id = $1 AND created_by = $2`,
-      [id, createdBy]
+      [id, requesterId]
     );
 
-    if (result.rowCount === 0) {
+    if (ownerDeleteResult.rowCount && ownerDeleteResult.rowCount > 0) {
+      return res.json({ success: true });
+    }
+
+    const { rowCount: opportunityExists } = await pool.query(
+      `SELECT 1 FROM opportunities WHERE id = $1`,
+      [id]
+    );
+
+    if (!opportunityExists) {
+      return res.status(404).json({ error: "Opportunity not found" });
+    }
+
+    const { rows: profileRows } = await pool.query<{ role: string | null }>(
+      `SELECT role FROM public.profiles WHERE id = $1`,
+      [requesterId]
+    );
+
+    const requesterRole = profileRows[0]?.role?.toLowerCase() ?? null;
+    const isAdmin = requesterRole === "admin";
+
+    if (!isAdmin) {
       return res.status(403).json({ error: "Not authorized to delete this opportunity" });
     }
+
+    await pool.query(`DELETE FROM opportunities WHERE id = $1`, [id]);
 
     res.json({ success: true });
   } catch (err) {

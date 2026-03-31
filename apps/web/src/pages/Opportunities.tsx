@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../lib/auth";
 import { API_BASE } from "../lib/apiBase";
+import { supabase } from "../lib/supabase";
 
 type Opportunity = {
   id: number;
@@ -11,10 +13,20 @@ type Opportunity = {
   deadline?: string; // ISO
   link?: string;
   postedAt: string; // ISO
+  createdBy?: string;
 };
 
+function normalizeUserId(value?: string | null) {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 export default function OpportunitiesPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<Opportunity[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Filters
   const [query, setQuery] = useState("");
@@ -37,11 +49,13 @@ export default function OpportunitiesPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentUserId = normalizeUserId(user?.id);
+  const isAdmin = userRole === "admin";
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetch(`${API_BASE}/api/opportunities`)
+    fetch(`${API_BASE}/api/opportunities`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
@@ -58,6 +72,10 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+          createdBy:
+            normalizeUserId(d.created_by) ??
+            normalizeUserId(d.createdBy) ??
+            undefined,
         }));
         setItems(norm);
         setLoading(false);
@@ -73,6 +91,60 @@ export default function OpportunitiesPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const userId = user?.id;
+
+    if (!userId) {
+      setUserRole(null);
+      return;
+    }
+
+    let mounted = true;
+
+    async function loadUserRole() {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .maybeSingle<{ role: string | null }>();
+
+        if (error) {
+          throw error;
+        }
+
+        if (mounted && typeof data?.role === "string") {
+          setUserRole(data.role.toLowerCase());
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to load profile role from Supabase:", err);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/profile/${userId}`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+
+        const data = await res.json();
+        if (!mounted) return;
+
+        setUserRole(
+          typeof data.role === "string" ? data.role.toLowerCase() : null
+        );
+      } catch (err) {
+        console.error("Failed to load profile role from API:", err);
+        if (!mounted) return;
+        setUserRole(null);
+      }
+    }
+
+    void loadUserRole();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -100,7 +172,13 @@ export default function OpportunitiesPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) {
+      setError("Please sign in to post an opportunity");
+      return;
+    }
     if (!form.title || !form.type) return;
+
+    setError(null);
     const payload = {
       title: form.title!.trim(),
       description: form.description?.trim() || undefined,
@@ -109,6 +187,7 @@ export default function OpportunitiesPage() {
       paid: !!form.paid,
       deadline: form.deadline || undefined,
       link: form.link || undefined,
+      created_by: user.id,
     };
 
     fetch(`${API_BASE}/api/opportunities`, {
@@ -131,6 +210,11 @@ export default function OpportunitiesPage() {
           deadline: d.deadline || undefined,
           link: d.link || undefined,
           postedAt: d.posted_at || d.postedAt || new Date().toISOString(),
+          createdBy:
+            normalizeUserId(d.created_by) ??
+            normalizeUserId(d.createdBy) ??
+            currentUserId ??
+            undefined,
         };
         setItems((s) => [created, ...s]);
         setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
@@ -143,14 +227,42 @@ export default function OpportunitiesPage() {
   }
 
   function removeItem(id: number) {
-    fetch(`${API_BASE}/api/opportunities/${id}`, { method: "DELETE" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`Status ${res.status}`);
+    if (!user?.id) {
+      setError("Please sign in to remove your opportunity");
+      return;
+    }
+
+    setError(null);
+    fetch(`${API_BASE}/api/opportunities/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requester_id: user.id }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          let message = `Status ${res.status}`;
+
+          try {
+            const data = await res.json();
+            if (typeof data?.error === "string" && data.error.trim()) {
+              message = data.error;
+            }
+          } catch {
+            // Ignore JSON parsing issues and keep the status-based message.
+          }
+
+          throw new Error(message);
+        }
+
         setItems((s) => s.filter((x) => x.id !== id));
       })
       .catch((err) => {
         console.error("Failed to delete opportunity:", err);
-        setError("Failed to delete opportunity");
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Failed to delete opportunity"
+        );
       });
   }
 
@@ -228,7 +340,9 @@ export default function OpportunitiesPage() {
                     <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
-                    <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    {(isAdmin || normalizeUserId(it.createdBy) === currentUserId) && (
+                      <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -4,6 +4,13 @@ import { z } from "zod";
 
 const router = Router();
 
+function normalizeUserId(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized || null;
+}
+
 const CreateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
@@ -12,13 +19,14 @@ const CreateSchema = z.object({
   paid: z.boolean().optional(),
   deadline: z.string().optional(),
   link: z.string().optional(),
+  created_by: z.string().min(1),
 });
 
 // GET /api/opportunities
 router.get("/", async (req: any, res: any) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, title, description, type, location, paid, deadline, link, posted_at FROM opportunities ORDER BY posted_at DESC`
+      `SELECT id, title, description, type, location, paid, deadline, link, created_by, posted_at FROM opportunities ORDER BY posted_at DESC`
     );
     res.json(rows);
   } catch (err) {
@@ -32,14 +40,28 @@ router.post("/", async (req: any, res: any) => {
   const parsed = CreateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(parsed.error);
 
-  const { title, description, type, location, paid, deadline, link } = parsed.data;
+  const { title, description, type, location, paid, deadline, link, created_by } = parsed.data;
+  const normalizedCreatedBy = normalizeUserId(created_by);
+
+  if (!normalizedCreatedBy) {
+    return res.status(400).json({ error: "created_by required" });
+  }
 
   try {
     const result = await pool.query(
-      `INSERT INTO opportunities (title, description, type, location, paid, deadline, link, posted_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7, now())
-       RETURNING id, title, description, type, location, paid, deadline, link, posted_at`,
-      [title, description || null, type || null, location || null, paid || false, deadline || null, link || null]
+      `INSERT INTO opportunities (title, description, type, location, paid, deadline, link, created_by, posted_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+       RETURNING id, title, description, type, location, paid, deadline, link, created_by, posted_at`,
+      [
+        title,
+        description || null,
+        type || null,
+        location || null,
+        paid || false,
+        deadline || null,
+        link || null,
+        normalizedCreatedBy,
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -52,10 +74,46 @@ router.post("/", async (req: any, res: any) => {
 // DELETE /api/opportunities/:id
 router.delete("/:id", async (req: any, res: any) => {
   const id = parseInt(req.params.id, 10);
+  const requesterId = normalizeUserId(req.body?.requester_id ?? req.body?.created_by);
+
   if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (!requesterId) {
+    return res.status(400).json({ error: "requester_id required" });
+  }
 
   try {
+    const ownerDeleteResult = await pool.query(
+      `DELETE FROM opportunities WHERE id = $1 AND created_by = $2`,
+      [id, requesterId]
+    );
+
+    if (ownerDeleteResult.rowCount && ownerDeleteResult.rowCount > 0) {
+      return res.json({ success: true });
+    }
+
+    const { rowCount: opportunityExists } = await pool.query(
+      `SELECT 1 FROM opportunities WHERE id = $1`,
+      [id]
+    );
+
+    if (!opportunityExists) {
+      return res.status(404).json({ error: "Opportunity not found" });
+    }
+
+    const { rows: profileRows } = await pool.query<{ role: string | null }>(
+      `SELECT role FROM public.profiles WHERE id = $1`,
+      [requesterId]
+    );
+
+    const requesterRole = profileRows[0]?.role?.toLowerCase() ?? null;
+    const isAdmin = requesterRole === "admin";
+
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Not authorized to delete this opportunity" });
+    }
+
     await pool.query(`DELETE FROM opportunities WHERE id = $1`, [id]);
+
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /opportunities/:id error:", err);

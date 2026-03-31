@@ -7,6 +7,7 @@ type ProfileRow = {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
+  role: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -30,6 +31,7 @@ function toProfileResponse(profile: ProfileRow) {
     email: profile.email,
     displayName: profile.display_name ?? undefined,
     avatarUrl: profile.avatar_url ?? undefined,
+    role: profile.role ?? undefined,
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
   };
@@ -39,6 +41,7 @@ async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   const { rows } = await pool.query<ProfileRow>(
     `
       SELECT id, email, display_name, avatar_url, created_at, updated_at
+      , role
       FROM public.profiles
       WHERE id = $1
     `,
@@ -104,6 +107,7 @@ async function createProfileFromAuthUser(
         END,
         updated_at = NOW()
       RETURNING id, email, display_name, avatar_url, created_at, updated_at
+      , role
     `,
     [authUser.id, authUser.email, displayName]
   );

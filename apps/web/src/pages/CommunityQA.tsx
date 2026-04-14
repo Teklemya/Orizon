@@ -18,7 +18,7 @@ type Question = {
   body: string; // HTML string now
   author: string;
   author_id?: string;
-  created_at?: string; // ✅ ADDED
+  created_at?: string;
   tags: string[];
   category: string;
   answers: Answer[];
@@ -29,12 +29,10 @@ function capitalize(str: string) {
 }
 
 function safeHTML(html: string) {
-  // simple fallback so empty values don't crash the render
   if (!html || typeof html !== "string") return "<p></p>";
   return html;
 }
 
-// ✅ ADDED: date formatting helper (keeps UI consistent)
 function formatDateTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -48,22 +46,17 @@ function formatDateTime(iso?: string) {
 export default function CommunityQA() {
   const { user } = useAuth();
 
-  const currentAuthor = user ? "Demo student · Orizon" : "Demo student";
+  const currentAuthor = user?.email?.split("@")[0] || "";
 
-  // =========================
-  // STATE
-  // =========================
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // search + category
   const [filter, setFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const API_URL = `${API_BASE}/api/questions`;
 
-  // ✅ Dummy + common categories (your system vocabulary)
   const BASE_CATEGORIES = [
     "Visa",
     "Housing",
@@ -87,29 +80,23 @@ export default function CommunityQA() {
   ];
 
   const [title, setTitle] = useState("");
-  const [body, setBody] = useState("<p></p>"); // HTML
+  const [body, setBody] = useState("<p></p>");
   const [tagsInput, setTagsInput] = useState("");
   const [category, setCategory] = useState("");
 
-  // reply state
   const [activeReplyId, setActiveReplyId] = useState<number | null>(null);
-  const [replyBody, setReplyBody] = useState("<p></p>"); // HTML
+  const [replyBody, setReplyBody] = useState("<p></p>");
 
-  // edit question state
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(
     null
   );
   const [editQuestionTitle, setEditQuestionTitle] = useState("");
-  const [editQuestionBody, setEditQuestionBody] = useState("<p></p>"); // HTML
+  const [editQuestionBody, setEditQuestionBody] = useState("<p></p>");
   const [editQuestionCategory, setEditQuestionCategory] = useState("");
 
-  // edit answer state
   const [editingAnswerId, setEditingAnswerId] = useState<number | null>(null);
-  const [editAnswerBody, setEditAnswerBody] = useState("<p></p>"); // HTML
+  const [editAnswerBody, setEditAnswerBody] = useState("<p></p>");
 
-  // =========================
-  // LOAD QUESTIONS + ANSWERS
-  // =========================
   async function loadQuestions() {
     try {
       setLoading(true);
@@ -131,8 +118,8 @@ export default function CommunityQA() {
           };
         })
       );
-      console.log("First question from API:", data?.[0]);
 
+      console.log("First question from API:", data?.[0]);
       setQuestions(questionsWithAnswers);
     } catch (err) {
       console.error(err);
@@ -146,9 +133,6 @@ export default function CommunityQA() {
     loadQuestions();
   }, []);
 
-  // =========================
-  // CATEGORIES
-  // =========================
   const derivedCategories = useMemo(() => {
     return Array.from(
       new Set([
@@ -158,14 +142,10 @@ export default function CommunityQA() {
     ).sort();
   }, [questions]);
 
-  // =========================
-  // FILTERED QUESTIONS
-  // =========================
   const filtered = useMemo(() => {
     const f = filter.toLowerCase();
 
     return questions.filter((q) => {
-      // NOTE: body is now HTML. This still works for search, but it's not perfect.
       const matchesSearch =
         q.title.toLowerCase().includes(f) ||
         q.body.toLowerCase().includes(f) ||
@@ -179,9 +159,6 @@ export default function CommunityQA() {
     });
   }, [questions, filter, selectedCategory]);
 
-  // =========================
-  // CREATE QUESTION
-  // =========================
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault();
 
@@ -225,9 +202,6 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // DELETE QUESTION
-  // =========================
   async function handleDeleteQuestion(questionId: number) {
     if (!user?.email) return;
 
@@ -248,9 +222,6 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // START EDIT QUESTION
-  // =========================
   function startEditQuestion(q: Question) {
     setEditingQuestionId(q.id);
     setEditQuestionTitle(q.title);
@@ -265,9 +236,6 @@ export default function CommunityQA() {
     setEditQuestionCategory("");
   }
 
-  // =========================
-  // SAVE EDIT QUESTION
-  // =========================
   async function handleSaveEditQuestion(questionId: number) {
     if (!user?.email) return;
 
@@ -291,9 +259,6 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // POST ANSWER
-  // =========================
   async function handleSubmitReply(e: React.FormEvent, questionId: number) {
     e.preventDefault();
 
@@ -325,9 +290,6 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // DELETE ANSWER
-  // =========================
   async function handleDeleteAnswer(questionId: number, answerId: number) {
     if (!user?.email) return;
 
@@ -348,9 +310,6 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // START EDIT ANSWER
-  // =========================
   function startEditAnswer(a: Answer) {
     setEditingAnswerId(a.id);
     setEditAnswerBody(a.body || "<p></p>");
@@ -361,9 +320,6 @@ export default function CommunityQA() {
     setEditAnswerBody("<p></p>");
   }
 
-  // =========================
-  // SAVE EDIT ANSWER
-  // =========================
   async function handleSaveEditAnswer(questionId: number, answerId: number) {
     if (!user?.email) return;
 
@@ -385,12 +341,8 @@ export default function CommunityQA() {
     await loadQuestions();
   }
 
-  // =========================
-  // RENDER
-  // =========================
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      {/* LEFT */}
       <section className="bg-white rounded-2xl shadow p-5">
         <div className="flex justify-between items-center mb-3">
           <div>
@@ -405,7 +357,6 @@ export default function CommunityQA() {
           />
         </div>
 
-        {/* CATEGORY TABS */}
         <div className="flex flex-wrap gap-2 mb-4">
           {["All", ...derivedCategories].map((cat) => (
             <button
@@ -435,7 +386,6 @@ export default function CommunityQA() {
 
               return (
                 <li key={q.id} className="py-3">
-                  {/* QUESTION DISPLAY / EDIT */}
                   {editingQuestionId === q.id ? (
                     <div className="space-y-2">
                       <input
@@ -495,14 +445,12 @@ export default function CommunityQA() {
                           {q.author}
                         </span>
 
-                        {/* ✅ ADDED: QUESTION DATE */}
                         {q.created_at && (
                           <span className="text-[11px] text-gray-400">
                             {formatDateTime(q.created_at)}
                           </span>
                         )}
 
-                        {/* TAGS */}
                         {q.tags?.map((t) => (
                           <span
                             key={t}
@@ -512,7 +460,6 @@ export default function CommunityQA() {
                           </span>
                         ))}
 
-                        {/* CATEGORY */}
                         {q.category && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
                             {capitalize(q.category)}
@@ -525,7 +472,6 @@ export default function CommunityQA() {
                         </span>
                       </div>
 
-                      {/* OWNER ACTIONS */}
                       {isOwner && (
                         <div className="mt-2 flex gap-3">
                           <button
@@ -547,7 +493,6 @@ export default function CommunityQA() {
                     </>
                   )}
 
-                  {/* ANSWERS */}
                   {q.answers?.length > 0 && (
                     <ul className="mt-3 space-y-2">
                       {q.answers.map((a) => {
@@ -599,14 +544,12 @@ export default function CommunityQA() {
                                   {a.author}
                                 </p>
 
-                                {/* ✅ ADDED: ANSWER DATE */}
                                 {a.created_at && (
                                   <p className="mt-1 text-[10px] text-gray-400">
                                     {formatDateTime(a.created_at)}
                                   </p>
                                 )}
 
-                                {/* ANSWER OWNER ACTIONS */}
                                 {isAnswerOwner && (
                                   <div className="mt-1 flex gap-3">
                                     <button
@@ -635,7 +578,6 @@ export default function CommunityQA() {
                     </ul>
                   )}
 
-                  {/* REPLY */}
                   <div className="mt-3">
                     {activeReplyId !== q.id ? (
                       <button
@@ -687,7 +629,6 @@ export default function CommunityQA() {
         )}
       </section>
 
-      {/* RIGHT - ASK A QUESTION */}
       <section className="bg-white rounded-2xl shadow p-5">
         <h2 className="text-sm font-semibold mb-2">Ask a question</h2>
         <p className="text-xs text-gray-500 mb-3">

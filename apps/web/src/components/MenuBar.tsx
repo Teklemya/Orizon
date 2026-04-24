@@ -1,4 +1,22 @@
 import type { Editor } from "@tiptap/react";
+import type { ReactNode } from "react";
+import {
+  Undo2,
+  Redo2,
+  Bold,
+  Italic,
+  Underline,
+  Highlighter,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Quote,
+  Link as LinkIcon,
+  Unlink,
+  Eraser,
+  Pilcrow,
+} from "lucide-react";
 
 type Props = {
   editor: Editor;
@@ -14,7 +32,7 @@ function ToolbarButton({
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   title?: string;
 }) {
   return (
@@ -24,7 +42,7 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={[
-        "inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm font-medium transition",
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition",
         active
           ? "border-black bg-black text-white shadow-sm"
           : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50",
@@ -37,8 +55,10 @@ function ToolbarButton({
 }
 
 function Divider() {
-  return <div className="mx-1 h-6 w-px bg-gray-200" />;
+  return <div className="mx-1 h-5 w-px shrink-0 bg-gray-200" />;
 }
+
+const iconSize = 15;
 
 export function MenuBar({ editor }: Props) {
   if (!editor) return null;
@@ -62,14 +82,14 @@ export function MenuBar({ editor }: Props) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50/80 px-3 py-3 backdrop-blur">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="border-b border-gray-200 bg-gray-50/80 px-3 py-2 backdrop-blur">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().chain().focus().undo().run()}
           title="Undo"
         >
-          Undo
+          <Undo2 size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -77,19 +97,43 @@ export function MenuBar({ editor }: Props) {
           disabled={!editor.can().chain().focus().redo().run()}
           title="Redo"
         >
-          Redo
+          <Redo2 size={iconSize} />
         </ToolbarButton>
-      </div>
 
-      <Divider />
+        <Divider />
 
-      <div className="flex flex-wrap items-center gap-2">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setParagraph().run()}
+          active={editor.isActive("paragraph")}
+          title="Paragraph"
+        >
+          <Pilcrow size={iconSize} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          active={editor.isActive("heading", { level: 1 })}
+          title="Heading 1"
+        >
+          <Heading1 size={iconSize} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          active={editor.isActive("heading", { level: 2 })}
+          title="Heading 2"
+        >
+          <Heading2 size={iconSize} />
+        </ToolbarButton>
+
+        <Divider />
+
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
           title="Bold"
         >
-          B
+          <Bold size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -97,7 +141,7 @@ export function MenuBar({ editor }: Props) {
           active={editor.isActive("italic")}
           title="Italic"
         >
-          I
+          <Italic size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -105,7 +149,7 @@ export function MenuBar({ editor }: Props) {
           active={editor.isActive("underline")}
           title="Underline"
         >
-          U
+          <Underline size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -113,61 +157,25 @@ export function MenuBar({ editor }: Props) {
           active={editor.isActive("highlight")}
           title="Highlight"
         >
-          Mark
-        </ToolbarButton>
-      </div>
-
-      <Divider />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <ToolbarButton
-          onClick={() =>
-            editor.chain().focus().setParagraph().run()
-          }
-          active={editor.isActive("paragraph")}
-          title="Paragraph"
-        >
-          Normal
+          <Highlighter size={iconSize} />
         </ToolbarButton>
 
-        <ToolbarButton
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 1 }).run()
-          }
-          active={editor.isActive("heading", { level: 1 })}
-          title="Heading 1"
-        >
-          H1
-        </ToolbarButton>
+        <Divider />
 
-        <ToolbarButton
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
-          active={editor.isActive("heading", { level: 2 })}
-          title="Heading 2"
-        >
-          H2
-        </ToolbarButton>
-      </div>
-
-      <Divider />
-
-      <div className="flex flex-wrap items-center gap-2">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
           title="Bullet list"
         >
-          • List
+          <List size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive("orderedList")}
-          title="Numbered list"
+          title="Ordered list"
         >
-          1. List
+          <ListOrdered size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -175,19 +183,17 @@ export function MenuBar({ editor }: Props) {
           active={editor.isActive("blockquote")}
           title="Quote"
         >
-          Quote
+          <Quote size={iconSize} />
         </ToolbarButton>
-      </div>
 
-      <Divider />
+        <Divider />
 
-      <div className="flex flex-wrap items-center gap-2">
         <ToolbarButton
           onClick={setLink}
           active={editor.isActive("link")}
           title="Insert link"
         >
-          Link
+          <LinkIcon size={iconSize} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -195,13 +201,13 @@ export function MenuBar({ editor }: Props) {
           disabled={!editor.isActive("link")}
           title="Remove link"
         >
-          Unlink
+          <Unlink size={iconSize} />
         </ToolbarButton>
-      </div>
 
-      <div className="ml-auto flex items-center gap-2">
+        <Divider />
+
         <ToolbarButton onClick={clearFormatting} title="Clear formatting">
-          Clear
+          <Eraser size={iconSize} />
         </ToolbarButton>
       </div>
     </div>

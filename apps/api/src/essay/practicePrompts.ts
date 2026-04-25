@@ -1,8 +1,11 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  throw new Error("OPENAI_API_KEY is not configured.");
+}
+
+const client = new OpenAI({ apiKey });
 
 export type PracticePromptCategory =
   | "personal-statement"
@@ -19,17 +22,21 @@ type PracticePromptInput = {
 export type PracticePrompt = {
   title: string;
   prompt: string;
+  kind?: "official" | "inspired";
+  sourceUrl?: string;
 };
 
-const commonAppSeedPrompts = [
-  "Reflect on a background, identity, interest, or talent that is so meaningful your application would be incomplete without it.",
-  "Recount a time when you faced a challenge, setback, or failure. How did it affect you, and what did you learn?",
-  "Reflect on a time when you questioned or challenged a belief or idea.",
-  "Reflect on something that someone has done for you that made you happy or thankful in a surprising way.",
-  "Discuss an accomplishment, event, or realization that sparked a period of personal growth and a new understanding of yourself or others.",
-  "Describe a topic, idea, or concept you find so engaging that it makes you lose track of time.",
-  "Share an essay on any topic of your choice.",
-];
+export function isPracticePromptCategory(
+  value: unknown
+): value is PracticePromptCategory {
+  return (
+    value === "personal-statement" ||
+    value === "why-major" ||
+    value === "scholarship" ||
+    value === "leadership" ||
+    value === "challenge-growth"
+  );
+}
 
 function getCategoryGuidance(
   category: PracticePromptCategory,
@@ -44,8 +51,10 @@ function getCategoryGuidance(
       return {
         label: "Personal Statement",
         guidance: [
-          "Generate practice prompts inspired by current Common App-style personal essay themes.",
-          "Focus on identity, growth, values, curiosity, challenge, gratitude, and reflection.",
+          "Look for official Common App essay prompts first.",
+          "If an official Common App prompt strongly matches the requested vibe, you may return that official prompt verbatim.",
+          "If no official prompt is a strong fit, create a new practice prompt inspired only by Common App essay themes.",
+          "Focus on reflection, identity, growth, values, curiosity, gratitude, challenge, and personal voice.",
           majorText,
         ].join(" "),
       };
@@ -54,18 +63,22 @@ function getCategoryGuidance(
       return {
         label: "Why This Major",
         guidance: [
-          "Generate practice prompts for a 'Why this major?' college essay.",
-          "Focus on academic motivation, field-specific curiosity, experiences, and future goals.",
+          "Common App usually does not publish a direct official 'Why this major?' essay prompt.",
+          "Search Common App only, understand the tone and themes, then generate realistic practice prompts inspired by that style.",
+          "If an official prompt genuinely fits, you may use it.",
+          "Focus on academic motivation, field-specific curiosity, relevant experiences, and future goals.",
           majorText,
         ].join(" "),
       };
 
     case "scholarship":
       return {
-        label: "Scholarship Essay",
+        label: "Scholarship",
         guidance: [
-          "Generate practice prompts for scholarship essays.",
-          "Focus on resilience, service, impact, financial opportunity, responsibility, and future contribution.",
+          "Common App usually does not publish official scholarship-specific prompts.",
+          "Search Common App only, use its official essay themes as inspiration, and generate realistic reflective practice prompts.",
+          "If an official prompt genuinely fits, you may use it.",
+          "Focus on resilience, impact, opportunity, responsibility, and future contribution.",
           majorText,
         ].join(" "),
       };
@@ -74,8 +87,10 @@ function getCategoryGuidance(
       return {
         label: "Leadership",
         guidance: [
-          "Generate practice prompts for leadership-focused essays.",
-          "Focus on initiative, teamwork, responsibility, communication, and helping others.",
+          "Common App usually does not publish official leadership-specific prompts.",
+          "Search Common App only, use its official essay themes as inspiration, and generate realistic reflective practice prompts.",
+          "If an official prompt genuinely fits, you may use it.",
+          "Focus on initiative, teamwork, communication, responsibility, and helping others.",
           majorText,
         ].join(" "),
       };
@@ -84,22 +99,98 @@ function getCategoryGuidance(
       return {
         label: "Challenge & Growth",
         guidance: [
-          "Generate practice prompts focused on overcoming difficulty and personal growth.",
+          "Search Common App only.",
+          "If an official Common App prompt strongly matches challenge, setback, growth, learning, or reflection, you may use it directly.",
+          "Otherwise create an inspired practice prompt based only on Common App themes.",
           "Focus on setbacks, adaptation, maturity, and lessons learned.",
           majorText,
         ].join(" "),
       };
-
-    default:
-      return {
-        label: "Essay Practice",
-        guidance: majorText,
-      };
   }
 }
 
-export async function generatePracticePrompts(
-  input: PracticePromptInput
+function extractFirstBalancedJsonObject(raw: string): string | null {
+  const text = raw.trim();
+
+  const fenced = text
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  const start = fenced.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < fenced.length; i++) {
+    const ch = fenced[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === `"`) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === `"`) {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return fenced.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parsePracticePrompts(raw: string): PracticePrompt[] {
+  const jsonText = extractFirstBalancedJsonObject(raw);
+
+  if (!jsonText) {
+    throw new Error("Model did not return a complete JSON object.");
+  }
+
+  const parsed = JSON.parse(jsonText) as { prompts?: PracticePrompt[] };
+
+  if (!Array.isArray(parsed.prompts)) {
+    throw new Error("Parsed response did not include a prompts array.");
+  }
+
+  return parsed.prompts;
+}
+
+function normalizePrompts(prompts: PracticePrompt[]): PracticePrompt[] {
+  return prompts.slice(0, 5).map((item, index) => ({
+    title:
+      typeof item.title === "string" && item.title.trim()
+        ? item.title.trim()
+        : `Prompt ${index + 1}`,
+    prompt: typeof item.prompt === "string" ? item.prompt.trim() : "",
+    kind: item.kind === "official" ? "official" : "inspired",
+    sourceUrl: typeof item.sourceUrl === "string" ? item.sourceUrl.trim() : "",
+  }));
+}
+
+async function requestPracticePrompts(
+  input: PracticePromptInput,
+  retry = false
 ): Promise<PracticePrompt[]> {
   const categoryInfo = getCategoryGuidance(
     input.category,
@@ -108,11 +199,14 @@ export async function generatePracticePrompts(
 
   const systemPrompt = [
     "You create college-admissions practice essay prompts.",
-    "These are practice prompts, not official prompts.",
-    "Use current Common App-style themes as inspiration where relevant.",
-    "Make prompts realistic, concise, and useful.",
-    "Do not copy seed prompts word-for-word unless necessary.",
-    "Return only valid JSON.",
+    "You must use web search and only use commonapp.org.",
+    "You may return an official Common App prompt verbatim only if it truly fits the requested category.",
+    "Otherwise create an inspired practice prompt based only on what Common App publishes.",
+    "Do not use any source outside commonapp.org.",
+    "Return exactly one valid JSON object.",
+    "Do not wrap JSON in markdown fences.",
+    "Do not add commentary before or after the JSON.",
+    "Keep every title and prompt concise.",
   ].join(" ");
 
   const userPrompt = `
@@ -121,25 +215,50 @@ Category: ${categoryInfo.label}
 Guidance:
 ${categoryInfo.guidance}
 
-Reference prompt families:
-${commonAppSeedPrompts.map((p, i) => `${i + 1}. ${p}`).join("\n")}
+Task:
+Search Common App only and generate exactly 5 prompts.
 
-Generate exactly 5 practice prompts.
-Each should include:
-- title
-- prompt
+For each prompt:
+1. Decide whether an official Common App prompt is already a strong fit.
+2. If yes, return that official prompt verbatim and set kind to "official".
+3. If not, create a new practice prompt inspired by Common App themes and set kind to "inspired".
 
 Rules:
-- sound like realistic college admissions prompts
-- keep each prompt clear and student-friendly
-- avoid repeating the same angle
-- if a major is provided, lightly tailor some prompts toward it
-- these should be practice prompts inspired by real admissions patterns, not claimed as official school prompts
+- Use ONLY commonapp.org
+- Never claim something is official unless it is directly from Common App
+- It is okay if some prompts are official and others are inspired
+- Avoid repeating the same angle
+- Keep prompts realistic, concise, and student-friendly
+- If a major is provided, lightly tailor some inspired prompts toward it
+- Include the best Common App source URL for each prompt
+- Return exactly 5 prompts in JSON
+
+JSON shape:
+{
+  "prompts": [
+    {
+      "title": "string",
+      "prompt": "string",
+      "kind": "official or inspired",
+      "sourceUrl": "string"
+    }
+  ]
+}
 `.trim();
 
   const response = await client.responses.create({
     model: "gpt-5.4-mini",
-    temperature: 0.8,
+    temperature: retry ? 0.1 : 0.3,
+    max_output_tokens: 3000,
+    tools: [
+      {
+        type: "web_search",
+        filters: {
+          allowed_domains: ["commonapp.org"],
+        },
+        search_context_size: "high",
+      },
+    ],
     input: [
       {
         role: "system",
@@ -161,14 +280,21 @@ Rules:
           properties: {
             prompts: {
               type: "array",
+              minItems: 5,
+              maxItems: 5,
               items: {
                 type: "object",
                 additionalProperties: false,
                 properties: {
                   title: { type: "string" },
                   prompt: { type: "string" },
+                  kind: {
+                    type: "string",
+                    enum: ["official", "inspired"],
+                  },
+                  sourceUrl: { type: "string" },
                 },
-                required: ["title", "prompt"],
+                required: ["title", "prompt", "kind", "sourceUrl"],
               },
             },
           },
@@ -178,12 +304,70 @@ Rules:
     },
   });
 
+  const usedWebSearch =
+    Array.isArray((response as any).output) &&
+    (response as any).output.some(
+      (item: any) => item?.type === "web_search_call"
+    );
+
+  console.log("Practice prompts used web search:", usedWebSearch);
+
+  if ((response as any).status === "incomplete") {
+    console.error("Practice prompts response incomplete:", {
+      status: (response as any).status,
+      incomplete_details: (response as any).incomplete_details,
+    });
+
+    if (!retry) {
+      return requestPracticePrompts(input, true);
+    }
+
+    throw new Error(
+      `OpenAI response was incomplete${
+        (response as any).incomplete_details?.reason
+          ? `: ${(response as any).incomplete_details.reason}`
+          : "."
+      }`
+    );
+  }
+
   const outputText = response.output_text;
   if (!outputText) {
+    console.error("No output_text returned from OpenAI:", response);
     throw new Error("The model returned an empty response.");
   }
 
-  const parsed = JSON.parse(outputText) as { prompts?: PracticePrompt[] };
+  try {
+    const prompts = normalizePrompts(parsePracticePrompts(outputText));
 
-  return Array.isArray(parsed.prompts) ? parsed.prompts : [];
+    if (prompts.length !== 5) {
+      throw new Error("Model did not return exactly 5 prompts.");
+    }
+
+    console.log(
+      "Practice prompt sources:",
+      prompts.map((prompt) => ({
+        title: prompt.title,
+        kind: prompt.kind,
+        sourceUrl: prompt.sourceUrl,
+      }))
+    );
+
+    return prompts;
+  } catch (error) {
+    console.error("Raw practice prompt model output:");
+    console.error(outputText);
+
+    if (!retry) {
+      return requestPracticePrompts(input, true);
+    }
+
+    throw error;
+  }
+}
+
+export async function generatePracticePrompts(
+  input: PracticePromptInput
+): Promise<PracticePrompt[]> {
+  return requestPracticePrompts(input);
 }

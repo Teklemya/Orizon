@@ -1,15 +1,15 @@
 /**
  * Supabase Authentication Context
- * 
+ *
  * This replaces the old localStorage demo auth with real Supabase Auth.
- * 
+ *
  * Features:
  * - Email/Password sign up & sign in
  * - Google OAuth
  * - Password reset
  * - Session persistence & auto-refresh
  * - Auth state change listeners
- * 
+ *
  * CHANGE SUMMARY:
  * - Added Supabase client import
  * - User now has id, email, display_name from Supabase
@@ -43,11 +43,16 @@ type User = {
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error?: string; needsConfirmation?: boolean }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error?: string; needsConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error?: string; success?: boolean }>;
+  resetPassword: (
+    email: string
+  ) => Promise<{ error?: string; success?: boolean }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -278,6 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {

@@ -33,6 +33,8 @@ function htmlToPlainText(html: string) {
     .trim();
 }
 
+const DEFAULT_CONTEXT = "U.S. college application personal statement";
+
 const CATEGORY_OPTIONS: {
   value: PracticePromptCategory;
   label: string;
@@ -46,7 +48,7 @@ const CATEGORY_OPTIONS: {
 
 export default function EssayStudio() {
   const [draftHtml, setDraftHtml] = useState("<p></p>");
-  const [context, setContext] = useState("");
+  const [context, setContext] = useState(DEFAULT_CONTEXT);
   const [loading, setLoading] = useState(false);
   const [promptLoading, setPromptLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -304,7 +306,7 @@ export default function EssayStudio() {
                 setFeedback(null);
                 setError(null);
                 setSelectedPrompt(null);
-                setContext("");
+                setContext(DEFAULT_CONTEXT);
               }}
               className="inline-flex items-center rounded-xl px-4 py-2 border text-sm hover:bg-gray-50"
             >

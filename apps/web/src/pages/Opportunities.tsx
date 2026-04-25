@@ -7,35 +7,13 @@ type Opportunity = {
   id: number;
   title: string;
   description?: string;
-  type:
-    | "Scholarship"
-    | "Internship"
-    | "Part time"
-    | "Full time"
-    | "Research"
-    | "Volunteer"
-    | string;
+  type: "Scholarship" | "Internship" | "Part time" | "Full time" | "Research" | "Volunteer" | string;
   location: string;
   paid: boolean;
   deadline?: string; // ISO
   link?: string;
   postedAt: string; // ISO
   createdBy?: string;
-};
-
-type OpportunityApiRow = {
-  id: number;
-  title: string;
-  description?: string | null;
-  type: string;
-  location: string;
-  paid: boolean | number | null;
-  deadline?: string | null;
-  link?: string | null;
-  posted_at?: string | null;
-  postedAt?: string | null;
-  created_by?: string | null;
-  createdBy?: string | null;
 };
 
 function normalizeUserId(value?: string | null) {
@@ -77,19 +55,17 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-
     fetch(`${API_BASE}/api/opportunities`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
       })
-      .then((data: OpportunityApiRow[]) => {
+      .then((data: any[]) => {
         if (!mounted) return;
-
         const norm: Opportunity[] = data.map((d) => ({
           id: d.id,
           title: d.title,
-          description: d.description ?? undefined,
+          description: d.description,
           type: d.type,
           location: d.location,
           paid: !!d.paid,
@@ -101,7 +77,6 @@ export default function OpportunitiesPage() {
             normalizeUserId(d.createdBy) ??
             undefined,
         }));
-
         setItems(norm);
         setLoading(false);
       })
@@ -173,64 +148,39 @@ export default function OpportunitiesPage() {
 
   const filtered = useMemo(() => {
     const now = Date.now();
-
     return items.filter((it) => {
-      if (
-        query &&
-        !`${it.title} ${it.description || ""} ${it.type}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      ) {
+      if (query && !(`${it.title} ${it.description || ""} ${it.type}`.toLowerCase().includes(query.toLowerCase()))) {
         return false;
       }
-
       if (typeFilter !== "Any" && it.type !== typeFilter) return false;
-
       if (locationFilter !== "Any") {
-        if (
-          locationFilter === "Remote" &&
-          it.location.toLowerCase() !== "remote"
-        ) {
-          return false;
-        }
-
-        if (
-          locationFilter === "Local" &&
-          it.location.toLowerCase() === "remote"
-        ) {
-          return false;
-        }
+        if (locationFilter === "Remote" && it.location.toLowerCase() !== "remote") return false;
+        if (locationFilter === "Local" && it.location.toLowerCase() === "remote") return false;
       }
-
       if (paidFilter !== "Any") {
         if (paidFilter === "Paid" && !it.paid) return false;
         if (paidFilter === "Unpaid" && it.paid) return false;
       }
-
       if (deadlineFilter !== "Any" && it.deadline) {
         const due = new Date(it.deadline).getTime();
         if (deadlineFilter === "Upcoming" && due < now) return false;
         if (deadlineFilter === "Past" && due >= now) return false;
       }
-
       return true;
     });
   }, [items, query, typeFilter, locationFilter, paidFilter, deadlineFilter]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (!user?.id) {
       setError("Please sign in to post an opportunity");
       return;
     }
-
     if (!form.title || !form.type) return;
 
     setError(null);
-
     const payload = {
-      title: form.title.trim(),
+      title: form.title!.trim(),
       description: form.description?.trim() || undefined,
       type: form.type || undefined,
       location: form.location || undefined,
@@ -249,11 +199,11 @@ export default function OpportunitiesPage() {
         if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
       })
-      .then((d: OpportunityApiRow) => {
+      .then((d) => {
         const created: Opportunity = {
           id: d.id,
           title: d.title,
-          description: d.description ?? undefined,
+          description: d.description,
           type: d.type,
           location: d.location,
           paid: !!d.paid,
@@ -266,16 +216,8 @@ export default function OpportunitiesPage() {
             currentUserId ??
             undefined,
         };
-
         setItems((s) => [created, ...s]);
-        setForm({
-          title: "",
-          description: "",
-          type: "Internship",
-          location: "Remote",
-          paid: true,
-          link: "",
-        });
+        setForm({ title: "", description: "", type: "Internship", location: "Remote", paid: true, link: "" });
         setShowForm(false);
       })
       .catch((err) => {
@@ -291,7 +233,6 @@ export default function OpportunitiesPage() {
     }
 
     setError(null);
-
     fetch(`${API_BASE}/api/opportunities/${id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -326,278 +267,145 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <section className="bg-white rounded-2xl shadow p-5">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <h1 className="text-lg font-semibold">Opportunities</h1>
-            <p className="text-xs text-gray-500">
-              Find and share scholarships, internships, jobs, and more.
-            </p>
+    <div className="space-y-6">
+      <header className="pb-4 border-b">
+        <h1 className="text-3xl font-bold">Opportunities</h1>
+        <p className="text-gray-600">Find and share scholarships, internships, jobs, and more.</p>
+      </header>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 space-y-4">
+          <div className="flex gap-3 items-center">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by keyword"
+              className="flex-1 px-3 py-2 border rounded-md"
+            />
+            <button
+              type="button"
+              onClick={() => setShowForm((s) => !s)}
+              className="px-3 py-2 bg-blue-600 text-white rounded-md"
+            >
+              {showForm ? "Close" : "Submit Opportunity"}
+            </button>
           </div>
 
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by keyword"
-            className="hidden sm:block rounded-lg border px-3 py-1.5 text-xs w-[280px]"
-          />
-        </div>
+          {showForm && (
+            <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg border space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Title" className="px-3 py-2 border rounded-md" />
+                <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="px-3 py-2 border rounded-md">
+                  <option>Internship</option>
+                  <option>Scholarship</option>
+                  <option>Part time</option>
+                  <option>Full time</option>
+                  <option>Research</option>
+                  <option>Volunteer</option>
+                </select>
+              </div>
 
-        <div className="sm:hidden mb-4">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by keyword"
-            className="w-full rounded-lg border px-3 py-2 text-sm"
-          />
-        </div>
+              <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Description" className="w-full px-3 py-2 border rounded-md" />
 
-        <div className="space-y-3 mt-2">
-          {loading && <div className="text-sm text-gray-500">Loading…</div>}
-          {error && <div className="text-sm text-red-500">{error}</div>}
-          {!loading && filtered.length === 0 && (
-            <div className="text-sm text-gray-500">No opportunities found.</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="Location (Remote / City)" className="px-3 py-2 border rounded-md" />
+                <input type="date" value={form.deadline || ""} onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value || undefined }))} className="px-3 py-2 border rounded-md" />
+                <input value={form.link} onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))} placeholder="Link" className="px-3 py-2 border rounded-md" />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!form.paid} onChange={(e) => setForm((f) => ({ ...f, paid: e.target.checked }))} />
+                  Paid
+                </label>
+                <div className="ml-auto">
+                  <button type="submit" className="px-3 py-2 bg-green-600 text-white rounded-md">Post</button>
+                </div>
+              </div>
+            </form>
           )}
 
-          {filtered.map((it) => (
-            <div
-              key={it.id}
-              className="rounded-xl border border-gray-200 px-4 py-4"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={it.link || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-base font-semibold text-gray-900 leading-snug hover:underline"
-                  >
-                    {it.title}
-                  </a>
+          <div className="space-y-3">
+            {loading && <div className="text-sm text-gray-500">Loading…</div>}
+            {error && <div className="text-sm text-red-500">{error}</div>}
+            {!loading && filtered.length === 0 && <div className="text-sm text-gray-500">No opportunities found.</div>}
 
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-gray-500">
-                    <span>{it.type}</span>
-                    <span>•</span>
-                    <span>{it.location}</span>
-                    <span>•</span>
-                    <span>{it.paid ? "Paid" : "Unpaid"}</span>
+            {filtered.map((it) => (
+              <div key={it.id} className="bg-white rounded-xl p-4 border">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <a href={it.link || "#"} target="_blank" rel="noreferrer" className="font-medium text-gray-800 hover:underline">{it.title}</a>
+                    <div className="text-xs text-gray-500 mt-1">{it.type} • {it.location} • {it.paid ? "Paid" : "Unpaid"}</div>
+                    {it.description && <p className="mt-2 text-sm text-gray-600 whitespace-pre-line">{it.description}</p>}
+                    <div className="mt-2 text-[11px] text-gray-400">Posted {new Date(it.postedAt).toLocaleString()} {it.deadline && <>• due {new Date(it.deadline).toLocaleDateString()}</>}</div>
                   </div>
-
-                  {it.description && (
-                    <p className="mt-3 text-sm text-gray-700 whitespace-pre-line leading-6">
-                      {it.description}
-                    </p>
-                  )}
-
-                  <div className="mt-3 text-[11px] text-gray-400">
-                    Posted {new Date(it.postedAt).toLocaleString()}
-                    {it.deadline && (
-                      <> • due {new Date(it.deadline).toLocaleDateString()}</>
+                  <div className="flex flex-col gap-2 items-end">
+                    {(isAdmin || normalizeUserId(it.createdBy) === currentUserId) && (
+                      <button onClick={() => removeItem(it.id)} className="text-xs text-red-600">Remove</button>
                     )}
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-2 items-end">
-                  {(isAdmin || normalizeUserId(it.createdBy) === currentUserId) && (
-                    <button
-                      onClick={() => removeItem(it.id)}
-                      className="text-xs text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <aside className="bg-white rounded-2xl shadow p-5 h-fit">
-        <div>
-          <h3 className="text-sm font-semibold mb-3">Filters</h3>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Type</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option>Any</option>
-                <option>Scholarship</option>
-                <option>Internship</option>
-                <option>Part time</option>
-                <option>Full time</option>
-                <option>Research</option>
-                <option>Volunteer</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                Location
-              </label>
-              <select
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option>Any</option>
-                <option>Remote</option>
-                <option>Local</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Paid</label>
-              <select
-                value={paidFilter}
-                onChange={(e) => setPaidFilter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option>Any</option>
-                <option>Paid</option>
-                <option>Unpaid</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                Deadline
-              </label>
-              <select
-                value={deadlineFilter}
-                onChange={(e) => setDeadlineFilter(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option>Any</option>
-                <option>Upcoming</option>
-                <option>Past</option>
-              </select>
-            </div>
-
-            <button
-              onClick={() => {
-                setTypeFilter("Any");
-                setLocationFilter("Any");
-                setPaidFilter("Any");
-                setDeadlineFilter("Any");
-                setQuery("");
-              }}
-              className="text-sm text-gray-500 hover:text-black"
-            >
-              Clear filters
-            </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-5 pt-5 border-t border-gray-100">
-          <h3 className="text-sm font-semibold">How it works</h3>
-          <p className="mt-2 text-xs text-gray-600">
-            Post opportunities for other students. Items are stored in the
-            database and shared across users.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setShowForm((s) => !s)}
-            className="mt-4 rounded-lg px-2.5 py-1 bg-black text-white text-xs font-medium hover:bg-gray-800"
-          >
-            {showForm ? "Close" : "Submit Opportunity"}
-          </button>
-
-          {showForm && (
-            <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-              <input
-                required
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="Title"
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              />
-
-              <select
-                value={form.type}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, type: e.target.value }))
-                }
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              >
-                <option>Internship</option>
-                <option>Scholarship</option>
-                <option>Part time</option>
-                <option>Full time</option>
-                <option>Research</option>
-                <option>Volunteer</option>
-              </select>
-
-              <textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                placeholder="Description"
-                className="w-full rounded-lg border px-3 py-2 text-sm min-h-[120px]"
-              />
-
-              <input
-                value={form.location}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, location: e.target.value }))
-                }
-                placeholder="Location (Remote / City)"
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              />
-
-              <input
-                type="date"
-                value={form.deadline || ""}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    deadline: e.target.value || undefined,
-                  }))
-                }
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              />
-
-              <input
-                value={form.link}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, link: e.target.value }))
-                }
-                placeholder="Link"
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-              />
-
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={!!form.paid}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, paid: e.target.checked }))
-                    }
-                  />
-                  Paid
-                </label>
+        <aside className="space-y-3">
+          <div className="bg-white p-4 rounded-lg border space-y-2">
+            <h3 className="text-sm font-semibold">Filters</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs">Type</label>
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full px-2 py-1 border rounded-md mt-1 text-sm">
+                  <option>Any</option>
+                  <option>Scholarship</option>
+                  <option>Internship</option>
+                  <option>Part time</option>
+                  <option>Full time</option>
+                  <option>Research</option>
+                  <option>Volunteer</option>
+                </select>
               </div>
 
-              <button
-                type="submit"
-                className="rounded-xl px-4 py-2 bg-black text-white text-sm hover:bg-gray-800"
-              >
-                Post
-              </button>
-            </form>
-          )}
-        </div>
-      </aside>
+              <div>
+                <label className="text-xs">Location</label>
+                <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="w-full px-2 py-1 border rounded-md mt-1 text-sm">
+                  <option>Any</option>
+                  <option>Remote</option>
+                  <option>Local</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs">Paid</label>
+                <select value={paidFilter} onChange={(e) => setPaidFilter(e.target.value)} className="w-full px-2 py-1 border rounded-md mt-1 text-sm">
+                  <option>Any</option>
+                  <option>Paid</option>
+                  <option>Unpaid</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs">Deadline</label>
+                <select value={deadlineFilter} onChange={(e) => setDeadlineFilter(e.target.value)} className="w-full px-2 py-1 border rounded-md mt-1 text-sm">
+                  <option>Any</option>
+                  <option>Upcoming</option>
+                  <option>Past</option>
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <button onClick={() => { setTypeFilter("Any"); setLocationFilter("Any"); setPaidFilter("Any"); setDeadlineFilter("Any"); setQuery(""); }} className="text-sm text-gray-600">Clear filters</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border text-sm text-gray-600">
+            <strong>How it works</strong>
+            <p className="mt-2 text-xs">Post opportunities for other students. Items are stored in the database and shared across users.</p>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

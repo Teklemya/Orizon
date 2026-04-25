@@ -10,8 +10,8 @@
 
 ## Screenshots
 -
-s
+
 ## Checklist
 - [ ] Tests added/updated
-- [ ] Documents updated
+- [ ] Docs updated
 - [ ] Issue linked

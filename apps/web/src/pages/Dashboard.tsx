@@ -12,66 +12,6 @@ type SavedRoadmap = {
   savedAt: string;
 };
 
-type RoadmapApiRow = {
-  id: string;
-  label: string;
-  steps: Step[];
-  created_at: string;
-};
-
-type OpportunityPreview = {
-  id: number;
-  title: string;
-  type: string;
-  location: string;
-  paid: boolean;
-  deadline?: string;
-  link?: string;
-};
-
-type OpportunityApiRow = {
-  id: number;
-  title: string;
-  type: string;
-  location: string;
-  paid: boolean;
-  deadline?: string | null;
-  link?: string | null;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isRoadmapApiRow(value: unknown): value is RoadmapApiRow {
-  if (!isRecord(value)) return false;
-
-  return (
-    typeof value.id === "string" &&
-    typeof value.label === "string" &&
-    Array.isArray(value.steps) &&
-    typeof value.created_at === "string"
-  );
-}
-
-function isOpportunityApiRow(value: unknown): value is OpportunityApiRow {
-  if (!isRecord(value)) return false;
-
-  return (
-    typeof value.id === "number" &&
-    typeof value.title === "string" &&
-    typeof value.type === "string" &&
-    typeof value.location === "string" &&
-    typeof value.paid === "boolean" &&
-    (value.deadline === undefined ||
-      value.deadline === null ||
-      typeof value.deadline === "string") &&
-    (value.link === undefined ||
-      value.link === null ||
-      typeof value.link === "string")
-  );
-}
-
 export default function Dashboard() {
   const { user } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
@@ -81,7 +21,7 @@ export default function Dashboard() {
   const [saveLabel, setSaveLabel] = useState("");
   const [openSavedId, setOpenSavedId] = useState<string | null>(null);
 
-  const [opportunities, setOpportunities] = useState<OpportunityPreview[]>([]);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
   const [oppLoading, setOppLoading] = useState(true);
   const [oppError, setOppError] = useState<string | null>(null);
 
@@ -93,19 +33,14 @@ export default function Dashboard() {
         const res = await fetch(`${API_BASE}/api/roadmaps?author_id=${user.id}`);
         if (!res.ok) throw new Error("Failed to load roadmaps");
 
-        const json: unknown = await res.json();
-        if (!Array.isArray(json)) {
-          throw new Error("Invalid roadmaps response");
-        }
+        const data = await res.json();
 
-        const mapped: SavedRoadmap[] = json
-          .filter(isRoadmapApiRow)
-          .map((r) => ({
-            id: r.id,
-            label: r.label,
-            steps: r.steps,
-            savedAt: r.created_at,
-          }));
+        const mapped = data.map((r: any) => ({
+          id: r.id,
+          label: r.label,
+          steps: r.steps,
+          savedAt: r.created_at,
+        }));
 
         setSavedRoadmaps(mapped);
       } catch (err) {
@@ -113,42 +48,24 @@ export default function Dashboard() {
       }
     }
 
-    void loadRoadmaps();
+    loadRoadmaps();
   }, [user?.id]);
 
   useEffect(() => {
-    async function loadOpportunities() {
-      try {
-        const res = await fetch(`${API_BASE}/api/opportunities`);
+    fetch(`${API_BASE}/api/opportunities`)
+      .then((res) => {
         if (!res.ok) throw new Error(`Status ${res.status}`);
-
-        const json: unknown = await res.json();
-        if (!Array.isArray(json)) {
-          throw new Error("Invalid opportunities response");
-        }
-
-        const mapped: OpportunityPreview[] = json
-          .filter(isOpportunityApiRow)
-          .map((o) => ({
-            id: o.id,
-            title: o.title,
-            type: o.type,
-            location: o.location,
-            paid: o.paid,
-            deadline: o.deadline ?? undefined,
-            link: o.link ?? undefined,
-          }));
-
-        setOpportunities(mapped);
+        return res.json();
+      })
+      .then((data: any[]) => {
+        setOpportunities(data);
         setOppLoading(false);
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error("Failed to load opportunities:", err);
         setOppError("Failed to load opportunities");
         setOppLoading(false);
-      }
-    }
-
-    void loadOpportunities();
+      });
   }, []);
 
   async function handleSaveCurrentRoadmap() {
@@ -172,21 +89,18 @@ export default function Dashboard() {
 
       if (!res.ok) throw new Error("Failed to save roadmap");
 
-      const json: unknown = await res.json();
-      if (!isRoadmapApiRow(json)) {
-        throw new Error("Invalid saved roadmap response");
-      }
+      const saved = await res.json();
 
-      const mapped: SavedRoadmap = {
-        id: json.id,
-        label: json.label,
-        steps: json.steps,
-        savedAt: json.created_at,
+      const mapped = {
+        id: saved.id,
+        label: saved.label,
+        steps: saved.steps,
+        savedAt: saved.created_at,
       };
 
       setSavedRoadmaps((prev) => [mapped, ...prev]);
       setSaveLabel("");
-      setOpenSavedId(mapped.id);
+      setOpenSavedId(saved.id);
     } catch (err) {
       console.error("Failed to save roadmap:", err);
     }

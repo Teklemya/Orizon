@@ -9,12 +9,16 @@ import CommunityQA from "./pages/CommunityQA";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Account from "./pages/Account";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 export default function App() {
   return (
     <Routes>
       {/* Public marketing homepage — has its own layout */}
       <Route path="/" element={<HomePage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
       {/* App routes — wrapped in the internal Layout */}
       <Route element={<Layout />}>

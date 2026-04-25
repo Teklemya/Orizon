@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "supabase": "^2.95.2"
   }
 }

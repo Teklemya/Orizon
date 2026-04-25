@@ -4,19 +4,28 @@ import { Link } from "react-router-dom";
 const LOGIN_PATH = "/login";
 const SIGNUP_PATH = "/login";
 
-const PRODUCT_LINKS = [
-  { label: "Dashboard", href: "#features" },
-  { label: "Essay Studio", href: "#features" },
-  { label: "Community Q&A", href: "#community" },
-  { label: "Opportunities", href: "#features" },
+type FooterAnchorLink = {
+  label: string;
+  href: string;
+};
+
+type FooterRouteLink = {
+  label: string;
+  to: string;
+};
+
+const PRODUCT_LINKS: FooterAnchorLink[] = [
+  { label: "Dashboard", href: "/#features" },
+  { label: "Essay Studio", href: "/#features" },
+  { label: "Community Q&A", href: "/#community" },
+  { label: "Opportunities", href: "/#features" },
 ];
 
-const COMPANY_LINKS = [
-  { label: "About", href: "#about" },
-  { label: "How It Works", href: "#how-it-works" },
-  // TODO: Add real links when these pages exist
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms of Service", href: "#" },
+const COMPANY_LINKS: Array<FooterAnchorLink | FooterRouteLink> = [
+  { label: "About", href: "/#about" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Privacy Policy", to: "/privacy" },
+  { label: "Terms of Service", to: "/terms" },
 ];
 
 export default function HomeFooter() {
@@ -84,12 +93,21 @@ export default function HomeFooter() {
             <ul className="space-y-3">
               {COMPANY_LINKS.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-slate-400 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
+                  {"to" in link ? (
+                    <Link
+                      to={link.to}
+                      className="text-sm text-slate-400 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-sm text-slate-400 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

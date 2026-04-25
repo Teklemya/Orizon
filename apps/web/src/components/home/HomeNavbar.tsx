@@ -6,10 +6,10 @@ const LOGIN_PATH = "/login";
 const SIGNUP_PATH = "/login";
 
 const NAV_LINKS = [
-  { label: "About", href: "#about" },
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Community", href: "#community" },
+  { label: "About", href: "/#about" },
+  { label: "Features", href: "/#features" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Community", href: "/#community" },
 ];
 
 export default function HomeNavbar() {

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../lib/auth";
 
@@ -196,12 +196,12 @@ export default function Layout() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 flex items-center justify-between text-sm text-gray-500">
           <span>© {new Date().getFullYear()} Orizon</span>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:underline">
+            <Link to="/privacy" className="hover:underline">
               Privacy
-            </a>
-            <a href="#" className="hover:underline">
+            </Link>
+            <Link to="/terms" className="hover:underline">
               Terms
-            </a>
+            </Link>
           </div>
         </div>
       </footer>
